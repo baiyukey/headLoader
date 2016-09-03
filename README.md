@@ -1,6 +1,6 @@
 # byLoader
-byLoader用于html页面加载及管理css/js文档
-欢迎您使用byLoader
+#byLoader用于html页面加载及管理css/js文档
+#欢迎您使用byLoader
 
 插件简介
 byLoader用于加载css及js文档,他有如下优点:
