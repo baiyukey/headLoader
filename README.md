@@ -24,6 +24,6 @@
     6.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,并且每两个小时更新一次.
     7.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓.
 #项目路径
-    [https://github.com/baiyukey/byLoader](https://github.com/baiyukey/byLoader)
+    (https://github.com/baiyukey/byLoader)
     *作者:龙马印
     *联系方式:baiyukey@hotmail.com
