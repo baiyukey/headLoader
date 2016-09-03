@@ -1,7 +1,7 @@
 欢迎您使用byLoader
 ===
 ##插件简介
-###byLoader用于加载css及js文档,他有如下优点:
+        byLoader用于加载css及js文档,他有如下优点:
         1.可以实现一个script标签加载页面所需的全部css及js文档;
         2.对加载文档进行缓存可控化,每两个小时更新一次,防止版本迭代时不能及时更新页面;
         3.当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,令页面载入快如闪电;
@@ -9,7 +9,7 @@
         5.减少客户端网络流量;
         6.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本.
 ##使用方法:
-      <script type="text/javascript" data-media-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/modules/byLoader.min.js"></script>
+        <script type="text/javascript" data-media-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/modules/byLoader.min.js"></script>
 ##使用说明
         1.在页面的合适位置插入javascript标签
         2.javascript标签的属性"data-media-dir"为文件的基础路径*必需
