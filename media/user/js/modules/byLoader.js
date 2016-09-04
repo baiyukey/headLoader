@@ -35,7 +35,8 @@ window.onload=function(){
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
   var jsMode="modules/"+modDir;
-  window.min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
+  var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
+  var thisVersion=min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);
   Array.prototype.removeRepeat=function(){
     var thisArr=this;
     var reArr=[];
@@ -53,7 +54,7 @@ window.onload=function(){
       if(window.localStorage){
         var xhr;
         var js=localStorage.getItem(name);
-        if(js==null||js.length==0||byLoader.reVersion()!=localStorage.getItem("version")){
+        if(js==null||js.length==0||thisVersion!=localStorage.getItem("version")){
           if(window.XMLHttpRequest){
             xhr=new XMLHttpRequest();
           }
@@ -91,7 +92,7 @@ window.onload=function(){
       if(window.localStorage){
         var xhr;
         var css=localStorage.getItem(name);
-        if(css==null||css.length==0||byLoader.reVersion()!=localStorage.getItem("version")){
+        if(css==null||css.length==0||thisVersion!=localStorage.getItem("version")){
           if(window.XMLHttpRequest){
             xhr=new XMLHttpRequest();
           }
@@ -135,7 +136,7 @@ window.onload=function(){
       if(name.indexOf("require")>0){
         /* link.defer=true;
          link.async=true;*/
-        link.setAttribute("data-main",mediaDir+"js/"+jsMode+window.min);
+        link.setAttribute("data-main",mediaDir+"js/"+jsMode+min);
       }
       link.innerHTML=text;
       head.appendChild(link);
@@ -155,7 +156,7 @@ window.onload=function(){
       if(url.indexOf("require.js")>0){
         //link.defer=true;
         //link.async=true;
-        link.setAttribute("data-main",mediaDir+"js/"+jsMode+window.min);
+        link.setAttribute("data-main",mediaDir+"js/"+jsMode+min);
       }
       link.src=url;
       head.appendChild(link);
@@ -194,9 +195,8 @@ window.onload=function(){
       
       this.execute=execute;
     },
-    reVersion:function(){return window.min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);},
     setVersion:function(){
-      localStorage.setItem("version",byLoader.reVersion());
+      localStorage.setItem("version",thisVersion);
     }
   };
   var init=function(){
