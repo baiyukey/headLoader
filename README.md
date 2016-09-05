@@ -10,7 +10,8 @@
         6.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本.
 ##使用方法:
         1.属性定义法:
-        <script type="text/javascript" data-media-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/modules/byLoader.min.js"></script>
+        <script type="text/javascript" data-base-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/modules/byLoader.min.js"></script>
+        
         2.外部命令法:
         <script type="text/javascript" data-base-dir="/media/user/" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/modules/byLoader.js"></script>
         <script type="text/javascript">
@@ -22,7 +23,7 @@
         </script>
 ##使用说明
         1.在页面的合适位置插入javascript标签
-        2.javascript标签的属性"data-media-dir"为文件的基础路径*必需
+        2.javascript标签的属性"data-base-dir"为文件的基础路径，默认为当前目录*可选
         3.javascript标签的属性"data-css"属性为css模块,多个css以逗号分割,byLoader会依次加载,css文件不需要指定文件的扩展名称*可选
         4.javascript标签的属性"data-js"属性为js模块,多个js以逗号分割,byLoader会依次加载,js文件不需要指定文件的扩展名称*可选
 ##注意事项
