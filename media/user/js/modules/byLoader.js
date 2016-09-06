@@ -47,45 +47,57 @@ Array.prototype.removeRepeat=function(){
   }
   return reArr;
 };//数组去重
+Array.prototype.removeEmpty=function(){
+  var reArr=[];
+  for(var i=0; i<this.length; i++){
+    if(this[i].length!=0){
+      reArr.push(this[i]);
+    }
+  }
+  return reArr;
+};//数组去空
 whenReady(function(){
   var allScript=document.getElementsByTagName("script");
   var thisScript=null;
   var dataJs=[],dataCss=[];
   var baseDir="";
   for(var i=0; i<allScript.length; i++){
-    if(allScript[i].getAttribute("src")&&allScript[i].getAttribute("src").indexOf("byLoader")>=0) thisScript=allScript[i];
+    if(allScript[i].hasAttribute("src")&&allScript[i].getAttribute("src").indexOf(atob("YnlMb2FkZXI="))>=0) thisScript=allScript[i];
   }
-  if(thisScript!=null&&console.log&&thisScript.getAttribute("src").indexOf("byLoader.min")<0) var reLog=true;
-  if(thisScript===null&&reLog){
-    console.log("错误提示:程序未成功执行,请支持原创,插件名称不要改动.如有问题请访问:https://github.com/baiyukey/byLoader");
+  var reLog=thisScript!=null&&console.log&&thisScript.getAttribute("src").indexOf(atob("YnlMb2FkZXIubWlu"))<0;
+  if(thisScript===null){
+    if(reLog) console.log(decodeURIComponent(atob("JUU5JTk0JTk5JUU4JUFGJUFGJUU2JThGJTkwJUU3JUE0JUJBJTNBJUU3JUE4JThCJUU1JUJBJThGJUU2JTlDJUFBJUU2JTg4JTkwJUU1JThBJTlGJUU2JTg5JUE3JUU4JUExJThDJTJDJUU2JThGJTkyJUU0JUJCJUI2JUU1JTkwJThEJUU3JUE3JUIwJUU0JUI4JUJBYnlMb2FkZXIuanMlRTYlODglOTYlRTglODAlODVieUxvYWRlci5taW4uanMlRTYlQjMlQTglRTYlODQlOEYlRTUlQTQlQTclRTUlQjAlOEYlRTUlODYlOTkuJUU1JUE2JTgyJUU2JTlDJTg5JUU3JTk2JTkxJUU5JTk3JUFFJUU4JUFGJUI3JUU4JUFFJUJGJUU5JTk3JUFFJTNBaHR0cHMlM0ElMkYlMkZnaXRodWIuY29tJTJGYmFpeXVrZXklMkZieUxvYWRlcg==")));
     return false;
-  }
-  if(!thisScript.getAttribute("data-base-dir")&&console.log){
-    console.log('友情提示:由于"data-base-dir"的值为空,byLoader已停止执行.');
-    //return false;
-  }
-  else{
-    baseDir=thisScript.getAttribute("data-base-dir");
-  }
-  if(!thisScript.getAttribute("data-css")&&reLog){
-    console.log('友情提示:"data-css"的值为空.');
-  }
-  else{
-    dataCss=thisScript.getAttribute("data-css").split(",");
-  }
-  if(!thisScript.getAttribute("data-js")&&reLog){
-    console.log('友情提示:"data-js"的值为空.');
-  }
-  else{
-    dataJs=thisScript.getAttribute("data-js").split(",");
   }
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
   var jsMode="modules/"+modDir;
-  var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
-  var thisVersion=min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);
-  window.byLoader=function(){
-    var loadJs=function(name,url,callback){
+  if(thisScript.hasAttribute("data-dir")){
+    baseDir=thisScript.getAttribute("data-dir");
+  }
+  else{
+    if(reLog) console.log('友情提示:未设置"data-dir"属性.');
+  }
+  if(thisScript.hasAttribute("data-css")){
+    dataCss=thisScript.getAttribute("data-css").split(",").removeEmpty();
+    dataCss.push(modDir);
+  }
+  else{
+    if(reLog) console.log('友情提示:未设置"data-css"属性');
+  }
+  if(thisScript.hasAttribute("data-js")){
+    dataJs=thisScript.getAttribute("data-js").split(",").removeEmpty();
+    if(dataJs.indexOf("require")<0) dataJs.push(jsMode);
+  }
+  else{
+    if(reLog) console.log('友情提示:未设置"data-js"属性');
+  }
+  window.byLoader=function(_val){
+    var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
+    var thisVersion="";
+    var loadJs=function(_thisDir,callback){
+      var name=_thisDir;
+      var url=_thisDir;
       if(window.localStorage){
         var xhr;
         var js=localStorage.getItem(name);
@@ -123,7 +135,9 @@ whenReady(function(){
         linkJs(url+".js");
       }
     };
-    var loadCss=function(name,url,callback){
+    var loadCss=function(_url,callback){
+      var name=_url;
+      var url=_url;
       if(window.localStorage){
         var xhr;
         var css=localStorage.getItem(name);
@@ -163,12 +177,13 @@ whenReady(function(){
         linkCss(url+".css");
       }
     };//往页面写入js脚本  
-    var writeJs=function(name,text){
+    var writeJs=function(_url,text){
+      var url=_url;
       var head=document.getElementsByTagName('HEAD').item(0);
       var link=document.createElement("script");
       link.setAttribute("type","text/javascript");
-      link.setAttribute("data-name",name);
-      if(name.indexOf("require")>0){
+      link.setAttribute("data-name",url);
+      if(url.indexOf("require")>0){
         /* link.defer=true;
          link.async=true;*/
         link.setAttribute("data-main",baseDir+"js/"+jsMode+min);
@@ -176,12 +191,12 @@ whenReady(function(){
       link.innerHTML=text;
       head.appendChild(link);
     };//往页面写入js脚本  
-    var writeCss=function(name,text){
+    var writeCss=function(_url,_text){
       var head=document.getElementsByTagName('HEAD').item(0);
       var link=document.createElement("style");
       link.setAttribute("type","text/css");
-      link.setAttribute("data-name",name);
-      link.innerHTML=text;
+      link.setAttribute("data-name",_url);
+      link.innerHTML=_text;
       head.appendChild(link);
     };//往页面引入css脚本  
     var linkJs=function(url){
@@ -206,8 +221,8 @@ whenReady(function(){
       link.href=url;
       head.appendChild(link);
     };
-    var loadSort=function(_baseUrl,_modules,_type,callBack){
-      var baseUrl=_baseUrl;
+    var loadSort=function(_thisDir,_modules,_type,callBack){
+      var thisDir=_thisDir;
       var modules=_modules.removeRepeat();
       var fileType=_type.toUpperCase();
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appVersion.split(";")[1].replace("MSIE",""))<9&&fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
@@ -219,8 +234,8 @@ whenReady(function(){
           return false;
         }
         else{
-          if(fileType==="JS") loadJs(modules[i],baseUrl+modules[i],per);
-          if(fileType==="CSS") loadCss(modules[i],baseUrl+modules[i],per);
+          if(fileType==="JS") loadJs(thisDir+modules[i]+min,per);
+          if(fileType==="CSS") loadCss(thisDir+modules[i]+min,per);
         }
       };
       per();
@@ -228,19 +243,29 @@ whenReady(function(){
     var setVersion=function(){
       localStorage.setItem("version",thisVersion);
     };
-    this.cssSort=[];
-    this.jsSort=[];
+    var getVersion=function(){ return min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);};
+    var val=_val||{};
+    var thisVal={
+      dataDir:val.dataDir||baseDir,
+      dataCss:val.dataCss||[],
+      dataJs:val.dataJs||[]
+    };
+    this.dataDir=thisVal.dataDir;
+    this.dataCss=thisVal.dataCss;
+    this.dataJs=thisVal.dataJs;
     this.run=function(){
-      //execute({"callBack":setVersion});
-      this.cssSort.push(modDir);//外部命令加载时页面CSS模块放到最后提升优先级
-      loadSort(baseDir+"css/",this.cssSort,"css");
-      loadSort(baseDir+"js/",this.jsSort,"js",setVersion);
+      thisVersion=getVersion();
+      var thisDataCss=this.dataCss;
+      var thisDataJs=this.dataJs;
+      var thisBaseDir=this.dataDir;
+      baseDir=thisBaseDir;
+      var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",setVersion);};
+      loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
     };
   };
-  dataCss.push(modDir);
-  if(dataJs.indexOf("require")<0) dataJs.push(jsMode);
   var thisLoader=new byLoader();
-  thisLoader.cssSort=dataCss;
-  thisLoader.jsSort=dataJs;
+  thisLoader.dataDir=baseDir;
+  thisLoader.dataCss=dataCss;
+  thisLoader.dataJs=dataJs;
   thisLoader.run();
 });
