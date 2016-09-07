@@ -268,4 +268,5 @@ whenReady(function(){
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
+  byLoader.version="v0.00.004";
 });
