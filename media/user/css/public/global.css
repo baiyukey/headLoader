@@ -1,7 +1,7 @@
 @charset "utf-8";
 /* 全局样式 */
 body{ margin:0; padding:0; font-size:16px \9; font-size:1em; overflow-y:auto; font-family:Arial, Verdana, Tahoma, "微软雅黑", Hiragino Sans GB, system, sans-serif; _text-align:center; }
-ul, dl, dd, dt, ol, li, p, h1, h2, h3, h4, h5, h6, textarea, form, select, fieldset, table, td, div, input, header, footer, section, nav, figure, figcaption, canvas{ margin:0; padding:0; font-weight:normal; font-family:Arial, Verdana, Tahoma, "微软雅黑", Hiragino Sans GB, system, sans-serif; _text-align:center; }
+ul, dl, dd, dt, ol, li, p, h1, h2, h3, h4, h5, h6, textarea, form, select, fieldset, table, td, div, input, header, footer, section, nav, figure, figcaption, canvas{ margin:0; padding:0; font-weight:normal; font-family:Arial, Verdana, Tahoma, Hiragino Sans GB, system, sans-serif; _text-align:center; -webkit-font-smoothing:antialiased;}
 div{ text-align:left; }
 a img{ border:0; }
 table{ border-collapse:collapse; border-spacing:0; }

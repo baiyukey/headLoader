@@ -1,9 +1,9 @@
 body{ background-color:#2f3436 !important; padding:0 !important; overflow-y:scroll; -ms-overflow-y:scroll; }
 header{min-width:1280px;}
 footer{min-width:1280px;}
-h5{margin:20px 0;}
-h6{margin:20px 0 0 0;}
-article{padding:20px; font-size:0.875rem;}
+h5{margin:20px 0;font-size:1rem;}
+h6{margin:20px 0 0 0;font-size:0.875rem;}
+article{padding:20px; font-size:0.75rem;}
 li{margin:10px 0;}
-textArea{margin:10px 0;width:100%; background:rgba(0,0,0,0);border:0; color:#dddddd; font-size:1rem;}
-a.gitHub{font-size:1rem;color:#888888;margin:10px 0;display:inline-block;} 
+textArea{margin:10px 0;width:100%; background:rgba(0,0,0,0);border:0;  font-size:0.75rem;}
+a.gitHub{font-size:0.75rem;color:#888888;margin:10px 0;display:inline-block;} 
