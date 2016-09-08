@@ -51,24 +51,20 @@
                 <script type="text/javascript" src="/media/user/js/libs/byLoader.js"></script></textarea>
             <textarea title="外部命令法" rows="9" readonly>
               <script type="text/javascript">
-                whenReady(function(){
                   var loader=new byLoader();
                   loader.dataDir="/media/user/";
                   loader.dataCss=['public/global','public/color','other','index/index'];
                   loader.dataJs=['libs/jquery-3.1.0','libs/jquery.byAlert','modules/index/index'];
                   loader.run();
-                });
                </script></textarea> 当然,您也可以写成这样:
             <textarea title="外部命令法" rows="10" readonly>
               <script type="text/javascript">
-                whenReady(function(){
                   var loader=new byLoader({
                     dataDir:"/media/users/",
                     dataCss:['public/global','public/color','other','index/index'],
                     dataJs:['libs/jquery-3.1.0','libs/jquery.byAlert','modules/index/index']
                   });
                   loader.run();
-                });
                </script></textarea>
           </li>
         </ul>
