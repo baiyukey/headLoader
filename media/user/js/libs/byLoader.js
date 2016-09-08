@@ -1,74 +1,37 @@
-﻿/**
- * Created by baiyu on 2016/8/5.
- */
-var whenReady=function(){
-  var funcs=[];
-  var ready=false;
-  var handler=function(e){
-    if(ready)
-      return;
-    if(e.type==='onreadystatechange'&&document.readyState!=='complete'){
-      return;
+﻿;(function(){
+  var removeRepeat=function(_this){
+    var thisArr=_this;
+    var reArr=[];
+    var temp={};
+    for(var i=0; i<thisArr.length; i++){
+      if(!temp[thisArr[i]]){
+        reArr.push(thisArr[i]);
+        temp[thisArr[i]]=true;
+      }
     }
-    for(var i=0; i<funcs.length; i++){
-      funcs[i].call(document);
-    }
-    ready=true;
-    funcs=null;
+    return reArr;
   };
-  //为接收到的任何事件注册处理程序
-  if(document.addEventListener){
-    document.addEventListener('DOMContentLoaded',handler,false);
-    document.addEventListener('readystatechange',handler,false); //IE9+
-    window.addEventListener('load',handler,false);
-  }
-  else if(document.attachEvent){
-    document.attachEvent('onreadystatechange',handler);
-    window.attachEvent('onload',handler);
-  }
-  return function(fn){
-    if(ready){
-      fn.call(document);
+  var removeEmpty=function(_this){
+    var reArr=[];
+    for(var i=0; i<_this.length; i++){
+      if(_this[i].length!=0){
+        reArr.push(_this[i]);
+      }
     }
-    else{
-      funcs.push(fn);
-    }
-  }
-}();
-Array.prototype.removeRepeat=function(){
-  var thisArr=this;
-  var reArr=[];
-  var temp={};
-  for(var i=0; i<thisArr.length; i++){
-    if(!temp[thisArr[i]]){
-      reArr.push(thisArr[i]);
-      temp[thisArr[i]]=true;
-    }
-  }
-  return reArr;
-};//数组去重
-Array.prototype.removeEmpty=function(){
-  var reArr=[];
-  for(var i=0; i<this.length; i++){
-    if(this[i].length!=0){
-      reArr.push(this[i]);
-    }
-  }
-  return reArr;
-};//数组去空
-whenReady(function(){
+    return reArr;
+  };
   var allScript=document.getElementsByTagName("script");
   var thisScript=null;
   var dataJs=[],dataCss=[];
   var baseDir="";
   for(var i=0; i<allScript.length; i++){
-    if(allScript[i].hasAttribute("src")&&allScript[i].getAttribute("src").indexOf(atob("YnlMb2FkZXI="))>=0) thisScript=allScript[i];
+    if(allScript[i].hasAttribute("src")&&allScript[i].getAttribute("src").indexOf(atob("YnlMb2FkZXIu"))>=0) thisScript=allScript[i];
   }
-  var reLog=thisScript!=null&&console.log&&thisScript.getAttribute("src").indexOf(atob("YnlMb2FkZXIubWlu"))<0;
   if(thisScript===null){
-    if(reLog) console.log(decodeURIComponent(atob("JUU5JTk0JTk5JUU4JUFGJUFGJUU2JThGJTkwJUU3JUE0JUJBJTNBJUU3JUE4JThCJUU1JUJBJThGJUU2JTlDJUFBJUU2JTg4JTkwJUU1JThBJTlGJUU2JTg5JUE3JUU4JUExJThDJTJDJUU2JThGJTkyJUU0JUJCJUI2JUU1JTkwJThEJUU3JUE3JUIwJUU0JUI4JUJBYnlMb2FkZXIuanMlRTYlODglOTYlRTglODAlODVieUxvYWRlci5taW4uanMlRTYlQjMlQTglRTYlODQlOEYlRTUlQTQlQTclRTUlQjAlOEYlRTUlODYlOTkuJUU1JUE2JTgyJUU2JTlDJTg5JUU3JTk2JTkxJUU5JTk3JUFFJUU4JUFGJUI3JUU4JUFFJUJGJUU5JTk3JUFFJTNBaHR0cHMlM0ElMkYlMkZnaXRodWIuY29tJTJGYmFpeXVrZXklMkZieUxvYWRlcg==")));
+    if(console.log) console.log("%c"+decodeURIComponent(atob("JUU5JTk0JTk5JUU4JUFGJUFGJUU2JThGJTkwJUU3JUE0JUJBJTNBJUU3JUE4JThCJUU1JUJBJThGJUU2JTlDJUFBJUU2JTg4JTkwJUU1JThBJTlGJUU2JTg5JUE3JUU4JUExJThDJTJDJUU2JThGJTkyJUU0JUJCJUI2JUU1JTkwJThEJUU3JUE3JUIwJUU0JUI4JUJBYnlMb2FkZXIuanMlRTYlODglOTYlRTglODAlODVieUxvYWRlci5taW4uanMlRTYlQjMlQTglRTYlODQlOEYlRTUlQTQlQTclRTUlQjAlOEYlRTUlODYlOTkuJUU1JUE2JTgyJUU2JTlDJTg5JUU3JTk2JTkxJUU5JTk3JUFFJUU4JUFGJUI3JUU4JUFFJUJGJUU5JTk3JUFFJTNBaHR0cHMlM0ElMkYlMkZnaXRodWIuY29tJTJGYmFpeXVrZXklMkZieUxvYWRlcg==")),"color:#F00");
     return false;
   }
+  var reLog=console.log&&thisScript.getAttribute("src").indexOf(atob("Lm1pbg=="))<0;
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
   var jsMode="modules/"+modDir;
@@ -79,14 +42,14 @@ whenReady(function(){
     if(reLog) console.log('友情提示:未设置"data-dir"属性.');
   }
   if(thisScript.hasAttribute("data-css")){
-    dataCss=thisScript.getAttribute("data-css").split(",").removeEmpty();
+    dataCss=removeEmpty(thisScript.getAttribute("data-css").split(","));
     dataCss.push(modDir);
   }
   else{
     if(reLog) console.log('友情提示:未设置"data-css"属性');
   }
   if(thisScript.hasAttribute("data-js")){
-    dataJs=thisScript.getAttribute("data-js").split(",").removeEmpty();
+    dataJs=removeEmpty(thisScript.getAttribute("data-js").split(","));
     if(dataJs.indexOf("require")<0) dataJs.push(jsMode);
   }
   else{
@@ -223,7 +186,7 @@ whenReady(function(){
     };
     var loadSort=function(_thisDir,_modules,_type,callBack){
       var thisDir=_thisDir;
-      var modules=_modules.removeRepeat();
+      var modules=removeRepeat(_modules);
       var fileType=_type.toUpperCase();
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appVersion.split(";")[1].replace("MSIE",""))<9&&fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
       var i=-1;
@@ -268,5 +231,5 @@ whenReady(function(){
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.004";
-});
+  byLoader.version="v0.00.005";
+})();
