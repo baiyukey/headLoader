@@ -10,29 +10,25 @@
         6.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本.
 ##使用方法(任选其一)
         1.标签属性定义法(推荐):
-         <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/libs/byLoader.min.js"></script>
+         <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-1.8.0,libs/jquery.byAlert" src="/media/user/js/libs/byLoader.min.js"></script>
         
         2.命令行语句法:
         <script type="text/javascript" src="/media/user/js/libs/byLoader.js"></script>
         <script type="text/javascript">
-            whenReady(function(){
-              var loader=new byLoader();
-              loader.dataDir="/media/user/";
-              loader.dataCss=['public/global','public/color','other','index/index'];
-              loader.dataJs=['libs/jquery-3.1.0','libs/jquery.byAlert','modules/index/index'];
-              loader.run();
-            });
+          var loader=new byLoader();
+          loader.dataDir="/media/user/";
+          loader.dataCss=['public/global','public/color','other','index/index'];
+          loader.dataJs=['libs/jquery-1.8.0','libs/jquery.byAlert','modules/index/index'];
+          loader.run();
         </script>
         当然,您也可以写成这样:
         <script type="text/javascript">
-            whenReady(function(){
-              var loader=new byLoader({
-                dataDir:"/media/users/",
-                dataCss:['public/global','public/color','other','index/index'],
-                dataJs:['libs/jquery-3.1.0','libs/jquery.byAlert','modules/index/index']
-              });
-              loader.run();
-            });
+          var loader=new byLoader({
+            dataDir:"/media/users/",
+            dataCss:['public/global','public/color','other','index/index'],
+            dataJs:['libs/jquery-1.8.0','libs/jquery.byAlert','modules/index/index']
+          });
+          loader.run();
         </script>
 ##使用说明
         1.在页面的合适位置插入javascript标签
@@ -44,15 +40,16 @@
             data-css 相当于 dataCss
             data-js    相当于 dataJs
 ##注意事项
-        1.css模块的路径在基础路径下的"css"目录中,js模块的路径在基础路径下的"js"目录中;
-        2.当使用标签属性定义法时,页面的css文件不用在data-css中指定,byLoader会自动指定,例如当页面为127.0.0.1/index/index.html,则对应的css为127.0.0.1/[data-dir]/css/index/index.css;
-        3.当使用标签属性定义法时,页面的js不用在data-js中指定,byLoader会自动指定,例如当页面为127.0.0.1/index/index.html,则对应的js为127.0.0.1/[data-dir]/js/modules/index/index.js;
-        4.支持require.js,当data-js中包含"require"时,则会自动为require的data-main属性自动定义为[data-dir]/js/modules/index/index,正因如此,data-main模块将脱离byLoader缓存机制;
-        5.byLoader会自动将文件缓存到localStorage中,页面下次加载会自动从localStorage中读取,从而使页面加载快如闪电;
-        6.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,并且每两个小时更新一次;
-        7.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓;
-        8.请使用相关压缩程序将js及css进行压缩成"min"版本,建议使用YUI Compressor;
-        9.当使用byLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用byLoader.min.js.
+        1.由于本插件需要使用localStorage功能,所以必须是现代浏览器或者IE10以上版本才可以成功运行;
+        2.css模块的路径在基础路径下的"css"目录中,js模块的路径在基础路径下的"js"目录中;
+        3.当使用标签属性定义法时,页面的css文件不用在data-css中指定,byLoader会自动指定,例如当页面为127.0.0.1/index/index.html,则对应的css为127.0.0.1/[data-dir]/css/index/index.css;
+        4.当使用标签属性定义法时,页面的js不用在data-js中指定,byLoader会自动指定,例如当页面为127.0.0.1/index/index.html,则对应的js为127.0.0.1/[data-dir]/js/modules/index/index.js;
+        5.支持require.js,当data-js中包含"require"时,则会自动为require的data-main属性自动定义为[data-dir]/js/modules/index/index,正因如此,data-main模块将脱离byLoader缓存机制;
+        6.byLoader会自动将文件缓存到localStorage中,页面下次加载会自动从localStorage中读取,从而使页面加载快如闪电;
+        7.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,并且每两个小时更新一次;
+        8.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓;
+        9.请使用相关压缩程序将js及css进行压缩成"min"版本,建议使用YUI Compressor;
+        10.当使用byLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用byLoader.min.js.
 ##项目路径
         https://github.com/baiyukey/byLoader
         作者:龙马印
