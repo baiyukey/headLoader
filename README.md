@@ -8,12 +8,12 @@
         4.减少服务器请求数量;
         5.减少客户端网络流量;
         6.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本.
-##使用方法:
+##使用方法(任选其一)
         1.标签属性定义法(推荐):
-         <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/modules/byLoader.min.js"></script>
+         <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other" data-js="libs/jquery-3.1.0,libs/jquery.byAlert" src="/media/user/js/libs/byLoader.min.js"></script>
         
         2.命令行语句法:
-        <script type="text/javascript" src="/media/user/js/modules/byLoader.js"></script>
+        <script type="text/javascript" src="/media/user/js/libs/byLoader.js"></script>
         <script type="text/javascript">
             whenReady(function(){
               var loader=new byLoader();
@@ -36,9 +36,9 @@
         </script>
 ##使用说明
         1.在页面的合适位置插入javascript标签
-        2.javascript标签的属性"data-dir"为文件的基础路径(*可选)[默认值:'./'];
-        3.javascript标签的属性"data-css"属性为css模块,多个css以逗号分割,byLoader会依次加载,css文件不需要指定文件的扩展名称(*可选)[默认值:'']
-        4.javascript标签的属性"data-js"属性为js模块,多个js以逗号分割,byLoader会依次加载,js文件不需要指定文件的扩展名称(*可选)[默认值:''];
+        2.javascript标签的"data-dir"属性定义模块的基础路径(*可选)[默认值:'./'];
+        3.javascript标签的"data-css"属性定义css模块,多个css以逗号分割,byLoader会依次加载,不需要指定文件的扩展名称(*可选)[默认值:'']
+        4.javascript标签的"data-js"属性定义js模块,多个js以逗号分割,byLoader会依次加载,不需要指定文件的扩展名称(*可选)[默认值:''];
         5.标签属性定义法与命令行语句法中的参数定义分别如下一一对应:
             data-dir  相当于 dataDir
             data-css 相当于 dataCss
@@ -47,7 +47,7 @@
         1.css模块的路径在基础路径下的"css"目录中,js模块的路径在基础路径下的"js"目录中;
         2.当使用标签属性定义法时,页面的css文件不用在data-css中指定,byLoader会自动指定,例如当页面为127.0.0.1/index/index.html,则对应的css为127.0.0.1/[data-dir]/css/index/index.css;
         3.当使用标签属性定义法时,页面的js不用在data-js中指定,byLoader会自动指定,例如当页面为127.0.0.1/index/index.html,则对应的js为127.0.0.1/[data-dir]/js/modules/index/index.js;
-        4.支持require.js,当data-js中包含require时,则会自动为require.js指定页面模块路径;即data-main属性自动设为[data-dir]/js/modules/index/index,正因如此,data-main模块将脱离byLoader缓存机制;
+        4.支持require.js,当data-js中包含"require"时,则会自动为require的data-main属性自动定义为[data-dir]/js/modules/index/index,正因如此,data-main模块将脱离byLoader缓存机制;
         5.byLoader会自动将文件缓存到localStorage中,页面下次加载会自动从localStorage中读取,从而使页面加载快如闪电;
         6.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,并且每两个小时更新一次;
         7.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓;
