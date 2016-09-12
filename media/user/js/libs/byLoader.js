@@ -34,6 +34,7 @@
   var reLog=console.log&&thisScript.getAttribute("src").indexOf(".min")<0;
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
+  modDir=modDir.indexOf("/")===0 ? modDir.substr(1): modDir;
   var jsMode="modules/"+modDir;
   if(thisScript.hasAttribute("data-dir")){
     baseDir=thisScript.getAttribute("data-dir");
@@ -50,7 +51,7 @@
   }
   if(thisScript.hasAttribute("data-js")){
     dataJs=removeEmpty(thisScript.getAttribute("data-js").split(","));
-    if(dataJs.indexOf("require")<0) dataJs.push(jsMode);
+    if(thisScript.getAttribute("data-js").indexOf("require")<0) dataJs.push(jsMode);
   }
   else{
     if(reLog) console.log('友情提示:未设置"data-js"属性');
