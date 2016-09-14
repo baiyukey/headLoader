@@ -34,34 +34,34 @@
   var reLog=console.log&&thisScript.getAttribute("src").indexOf(".min")<0;
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
-  modDir=modDir.indexOf("/")===0 ? modDir.substr(1): modDir;
+  modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
   var jsMode="modules/"+modDir;
   if(thisScript.hasAttribute("data-dir")){
     baseDir=thisScript.getAttribute("data-dir");
   }
   else{
-    if(reLog) console.log('友情提示:未设置"data-dir"属性.');
+    if(reLog) console.log('%c友情提示:script标签无"data-dir"属性.',"color:#69F;");
   }
   if(thisScript.hasAttribute("data-css")){
-    dataCss=removeEmpty(thisScript.getAttribute("data-css").split(","));
-    dataCss.push(modDir);
+    dataCss=thisScript.getAttribute("data-css").split(",");//.replace(/_css/g,modDir);
+    //dataCss.push(modDir);
   }
   else{
-    if(reLog) console.log('友情提示:未设置"data-css"属性');
+    if(reLog) console.log('%c友情提示:script标签无"data-css"属性',"color:#69F;");
   }
   if(thisScript.hasAttribute("data-js")){
-    dataJs=removeEmpty(thisScript.getAttribute("data-js").split(","));
-    if(thisScript.getAttribute("data-js").indexOf("require")<0) dataJs.push(jsMode);
+    dataJs=thisScript.getAttribute("data-js").split(",");//.replace(/_js/g,jsMode);
+    //if(thisScript.getAttribute("data-js").indexOf("require")<0) dataJs.push(jsMode);
   }
   else{
-    if(reLog) console.log('友情提示:未设置"data-js"属性');
+    if(reLog) console.log('%c友情提示:script标签无"data-js"属性',"color:#69F;");
   }
   window.byLoader=function(_val){
     var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
     var thisVersion="";
     var loadJs=function(_thisDir,callback){
       var name=_thisDir;
-      var url=_thisDir;
+      var url=_thisDir+".js";
       if(window.localStorage){
         var xhr;
         var js=localStorage.getItem(name);
@@ -73,7 +73,7 @@
             xhr=new ActiveXObject("Microsoft.XMLHTTP");
           }
           if(xhr!=null){
-            xhr.open("GET",url+".js");
+            xhr.open("GET",url);
             xhr.send(null);
             xhr.onreadystatechange=function(){
               if(xhr.readyState==4&&xhr.status==200){
@@ -96,12 +96,12 @@
         }
       }
       else{
-        linkJs(url+".js");
+        linkJs(url);
       }
     };
     var loadCss=function(_url,callback){
       var name=_url;
-      var url=_url;
+      var url=_url+".css";
       if(window.localStorage){
         var xhr;
         var css=localStorage.getItem(name);
@@ -113,7 +113,7 @@
             xhr=new ActiveXObject("Microsoft.XMLHTTP");
           }
           if(xhr!=null){
-            xhr.open("GET",url+".css");
+            xhr.open("GET",url);
             xhr.send(null);
             xhr.onreadystatechange=function(){
               if(xhr.readyState==4&&xhr.status==200){
@@ -138,7 +138,7 @@
         }
       }
       else{
-        linkCss(url+".css");
+        linkCss(url);
       }
     };//往页面写入js脚本  
     var writeJs=function(_url,text){
@@ -219,8 +219,8 @@
     this.dataJs=thisVal.dataJs;
     this.run=function(){
       thisVersion=getVersion();
-      var thisDataCss=this.dataCss;
-      var thisDataJs=this.dataJs;
+      var thisDataCss=removeEmpty(this.dataCss.join(",").replace(/_css/g,modDir).split(","));
+      var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,jsMode).split(","));
       var thisBaseDir=this.dataDir;
       baseDir=thisBaseDir;
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",setVersion);};
@@ -232,5 +232,5 @@
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.005";
+  byLoader.version="v0.00.006";
 })();
