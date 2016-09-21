@@ -3,23 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <title>欢迎您使用byLoader</title>
-  <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-1.8.0,libs/jquery.byAlert,_js" src="/media/user/js/libs/byLoader.min.js"></script>
-<!--  <script type="text/javascript" src="/media/user/js/libs/byLoader.js"></script>-->
-<!--  <script type="text/javascript">
+  <!--<script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-1.8.0,libs/jquery.byAlert,_js" src="/media/user/js/libs/byLoader.min.js"></script>-->
+  <script type="text/javascript" src="/media/user/js/libs/byLoader.min.js"></script>
+  <script type="text/javascript">
     var loader=new byLoader({
       dataDir:"/media/user/",
       dataCss:['public/global','public/color','other','_css'],
-      dataJs:['libs/jquery-3.1.0','libs/jquery.byAlert','_js']
+      dataJs:['libs/jquery-3.1.0','libs/jquery.byAlert','_js'],
+      callBack:function(){console.log("byLoader is done!")}
     });
     loader.run();
-  </script>-->
-<!--  <script type=text/javascript>
-    var loader=new byLoader();
-    loader.dataDir="/media/user/";
-    loader.dataCss=['public/global','public/color','other','_css'];
-    loader.dataJs=['libs/jquery-3.1.0','libs/jquery.byAlert','libs/require'];//加载require时会自动指定页面模块地址为modules/index/index'
-    loader.run();
-  </script>-->
+  </script>
+  <!--  <script type=text/javascript>
+      var loader=new byLoader();
+      loader.dataDir="/media/user/";
+      loader.dataCss=['public/global','public/color','other','_css'];
+      loader.dataJs=['libs/jquery-3.1.0','libs/jquery.byAlert','libs/require'];//加载require时会自动指定页面模块地址为modules/index/index';
+      loader.callBack=function(){console.log("byLoader is done!")};
+      loader.run();
+    </script>-->
 </head>
 <body>
 <header></header>
@@ -41,7 +43,7 @@
         <h6>使用方法(任选其一)</h6>
         <ul>
           <li>
-            <p>1.标签属性定义法(推荐):</p>
+            <p>1.标签属性定义法:</p>
             <textarea title="" rows="2" readonly>
           <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.byAlert,_js" src="/media/user/js/libs/byLoader.min.js"></script></textarea>
           </li>
@@ -55,6 +57,7 @@
                   loader.dataDir="/media/user/";
                   loader.dataCss=['public/global','public/color','other','_css'];
                   loader.dataJs=['libs/jquery-3.1.0','libs/jquery.byAlert','_js'];
+                  loader.callBack=function(){console.log("byLoader is done!")};   //外部命令法可以定义回调函数
                   loader.run();
                </script></textarea> 当然,您也可以写成这样:
             <textarea title="外部命令法" rows="10" readonly>
@@ -62,7 +65,8 @@
                   var loader=new byLoader({
                     dataDir:"/media/users/",
                     dataCss:['public/global','public/color','other','_css'],
-                    dataJs:['libs/jquery-3.1.0','libs/jquery.byAlert','_js']
+                    dataJs:['libs/jquery-3.1.0','libs/jquery.byAlert','_js'],
+                    callBack:function(){console.log("byLoader is done!")}   //外部命令法可以定义回调函数
                   });
                   loader.run();
                </script></textarea>
@@ -78,6 +82,8 @@
           <li>4.javascript标签的"data-js"属性定义js模块,多个js以逗号分割,byLoader会依次加载,js文件不需要指定文件的扩展名称<i>(*可选)[默认值:'']</i>
           </li>
           <li>5.标签属性定义法与命令行语句法中的参数定义分别如下一一对应:<br> data-dir 相当于 dataDir<br> data-css 相当于 dataCss<br> data-js 相当于 dataJs<br>
+          </li>
+          <li>6.命令行语句法可以定义回调函数,标签属性定义法不支持定义回调函数<br>
           </li>
         </ul>
         <h6>注意事项</h6>

@@ -204,26 +204,30 @@
       };
       per();
     };
-    var setVersion=function(){
-      localStorage.setItem("version",thisVersion);
-    };
-    var getVersion=function(){ return min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);};
+    var returnVersion=function(){ return min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);};
     var val=_val||{};
     var thisVal={
       dataDir:val.dataDir||baseDir,
       dataCss:val.dataCss||[],
-      dataJs:val.dataJs||[]
+      dataJs:val.dataJs||[],
+      callBack:val.callBack||null
     };
     this.dataDir=thisVal.dataDir;
     this.dataCss=thisVal.dataCss;
     this.dataJs=thisVal.dataJs;
+    this.callBack=thisVal.callBack;
     this.run=function(){
-      thisVersion=getVersion();
+      thisVersion=returnVersion();
       var thisDataCss=removeEmpty(this.dataCss.join(",").replace(/_css/g,modDir).split(","));
       var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,jsMode).split(","));
       var thisBaseDir=this.dataDir;
+      var callBack=this.callBack;
       baseDir=thisBaseDir;
-      var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",setVersion);};
+      var loadAllCallback=function(){
+        localStorage.setItem("version",thisVersion);
+        if(callBack!=null) callBack.call(this);
+      };
+      var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
       loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
     };
   };
@@ -232,5 +236,5 @@
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.006";
+  byLoader.version="v0.00.007";
 })();
