@@ -19,6 +19,7 @@
           loader.dataDir="/media/user/";
           loader.dataCss=['public/global','public/color','other','_css'];
           loader.dataJs=['libs/jquery-1.8.0','libs/jquery.byAlert','_js'];
+          loader.callBack=function(){console.log("byLoader is done!")};   //外部命令法可以定义回调函数
           loader.run();
         </script>
         当然,您也可以写成这样:
@@ -26,7 +27,8 @@
           var loader=new byLoader({
             dataDir:"/media/users/",
             dataCss:['public/global','public/color','other','_css'],
-            dataJs:['libs/jquery-1.8.0','libs/jquery.byAlert','_js']
+            dataJs:['libs/jquery-1.8.0','libs/jquery.byAlert','_js'],
+            callBack:function(){console.log("byLoader is done!")}   //外部命令法可以定义回调函数
           });
           loader.run();
         </script>
@@ -39,6 +41,7 @@
             data-dir  相当于 dataDir
             data-css 相当于 dataCss
             data-js    相当于 dataJs
+        6.命令行语句法可以定义回调函数,标签属性定义法不支持定义回调函数
 ##注意事项
         1.由于本插件需要使用localStorage功能,所以必须是现代浏览器或者IE10以上版本才可以成功运行;
         2.css模块的路径在基础路径下的"css"目录中,js模块的路径在基础路径下的"js"目录中;
