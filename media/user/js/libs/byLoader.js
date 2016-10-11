@@ -1,4 +1,7 @@
-﻿;(function(){
+﻿/* 
+see: https://github.com/baiyukey/byLoader for details
+*/
+;(function(){
   var removeRepeat=function(_this){
     var thisArr=_this;
     var reArr=[];
@@ -35,7 +38,6 @@
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
-  var jsMode="modules/"+modDir;
   if(thisScript.hasAttribute("data-dir")){
     baseDir=thisScript.getAttribute("data-dir");
   }
@@ -50,8 +52,8 @@
     if(reLog) console.log('%c友情提示:script标签无"data-css"属性',"color:#69F;");
   }
   if(thisScript.hasAttribute("data-js")){
-    dataJs=thisScript.getAttribute("data-js").split(",");//.replace(/_js/g,jsMode);
-    //if(thisScript.getAttribute("data-js").indexOf("require")<0) dataJs.push(jsMode);
+    dataJs=thisScript.getAttribute("data-js").split(",");//.replace(/_js/g,modDir);
+    //if(thisScript.getAttribute("data-js").indexOf("require")<0) dataJs.push(modDir);
   }
   else{
     if(reLog) console.log('%c友情提示:script标签无"data-js"属性',"color:#69F;");
@@ -150,7 +152,7 @@
       if(url.indexOf("require")>0){
         /* link.defer=true;
          link.async=true;*/
-        link.setAttribute("data-main",baseDir+"js/"+jsMode+min);
+        link.setAttribute("data-main",baseDir+"js/"+modDir+min);
       }
       link.innerHTML=text;
       head.appendChild(link);
@@ -170,7 +172,7 @@
       if(url.indexOf("require.js")>0){
         //link.defer=true;
         //link.async=true;
-        link.setAttribute("data-main",baseDir+"js/"+jsMode+min);
+        link.setAttribute("data-main",baseDir+"js/"+modDir+min);
       }
       link.src=url;
       head.appendChild(link);
@@ -219,7 +221,7 @@
     this.run=function(){
       thisVersion=returnVersion();
       var thisDataCss=removeEmpty(this.dataCss.join(",").replace(/_css/g,modDir).split(","));
-      var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,jsMode).split(","));
+      var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,modDir).split(","));
       var thisBaseDir=this.dataDir;
       var callBack=this.callBack;
       baseDir=thisBaseDir;
@@ -236,5 +238,5 @@
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.007";
+  byLoader.version="v0.00.008";
 })();
