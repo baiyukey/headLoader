@@ -53,7 +53,7 @@
         8.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓;
         9.请使用相关压缩程序将js及css进行压缩成"min"版本,建议使用YUI Compressor;
         10.当使用byLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用byLoader.min.js.
-##关于作者
+##更多...
         https://github.com/baiyukey/byLoader
         作者:龙马印
         联系方式:baiyukey@hotmail.com
