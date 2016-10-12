@@ -1,6 +1,6 @@
 ﻿/* 
-see: https://github.com/baiyukey/byLoader for details
-*/
+ see: https://github.com/baiyukey/byLoader for details
+ */
 ;(function(){
   var removeRepeat=function(_this){
     var thisArr=_this;
@@ -121,7 +121,7 @@ see: https://github.com/baiyukey/byLoader for details
               if(xhr.readyState==4&&xhr.status==200){
                 css=xhr.responseText;
                 css=css==null ? "" : css;
-                css=css.replace(/\/byAdmin\/media\/user\//g,baseDir); //byAdmin中的css文件的图片路径需单独处理  
+                css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理  
                 localStorage.setItem(name,css);
                 writeCss(name,css);
                 if(callback!=null){
@@ -132,7 +132,7 @@ see: https://github.com/baiyukey/byLoader for details
           }
         }
         else{
-          //css=css.replace(/\/byAdmin\/media\/user\//g,baseDir); //css里的图片路径需单独处理  
+          //css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理  
           writeCss(name,css);
           if(callback!=null){
             callback(); //回调，执行下一个引用  
@@ -238,5 +238,5 @@ see: https://github.com/baiyukey/byLoader for details
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.008";
+  byLoader.version="v0.00.009";
 })();
