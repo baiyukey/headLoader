@@ -60,6 +60,7 @@
   }
   window.byLoader=function(_val){
     var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
+    var priVersion=localStorage.getItem("version");
     var thisVersion="";
     var loadJs=function(_thisDir,callback){
       var name=_thisDir;
@@ -67,7 +68,7 @@
       if(window.localStorage){
         var xhr;
         var js=localStorage.getItem(name);
-        if(js==null||js.length==0||thisVersion!=localStorage.getItem("version")){
+        if(js==null||js.length==0||thisVersion!=priVersion){
           if(window.XMLHttpRequest){
             xhr=new XMLHttpRequest();
           }
@@ -107,7 +108,7 @@
       if(window.localStorage){
         var xhr;
         var css=localStorage.getItem(name);
-        if(css==null||css.length==0||thisVersion!=localStorage.getItem("version")){
+        if(css==null||css.length==0||thisVersion!=priVersion){
           if(window.XMLHttpRequest){
             xhr=new XMLHttpRequest();
           }
@@ -237,6 +238,6 @@
   thisLoader.dataDir=baseDir;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
-  thisLoader.run();
-  byLoader.version="v0.00.009";
+  thisLoader.run(); 
+  byLoader.version="v0.00.010";
 })();
