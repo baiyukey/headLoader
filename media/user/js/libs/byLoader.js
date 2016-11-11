@@ -27,6 +27,7 @@
   var thisScript=null;
   var dataJs=[],dataCss=[];
   var baseDir="";
+  var update=false;
   for(var i=0; i<allScript.length; i++){
     if(allScript[i].hasAttribute("src")&&allScript[i].getAttribute("src").indexOf(atob("YnlMb2FkZXIu"))>=0) thisScript=allScript[i];
   }
@@ -38,6 +39,12 @@
   var staticDir=location.pathname.split("/")[1]=="static" ? "/static" : "/";
   var modDir=location.pathname.replace(staticDir,"").replace(".html","");
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
+  if(thisScript.hasAttribute("data-update-version")){
+    update=thisScript.getAttribute("data-update-version");
+  }
+  else{
+    if(reLog) console.log('%c友情提示:script标签无"data-update-version"属性,默认为false.',"color:#69F;");
+  }
   if(thisScript.hasAttribute("data-dir")){
     baseDir=thisScript.getAttribute("data-dir");
   }
@@ -60,11 +67,11 @@
   }
   window.byLoader=function(_val){
     var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
-    var priVersion=localStorage.getItem("version");
+    var priVersion=localStorage.getItem("byLoadDataVersion");
     var thisVersion="";
     var loadJs=function(_thisDir,callback){
       var name=_thisDir;
-      var url=_thisDir+".js";
+      var url=_thisDir+".js?"+returnVersion();
       if(window.localStorage){
         var xhr;
         var js=localStorage.getItem(name);
@@ -104,7 +111,7 @@
     };
     var loadCss=function(_url,callback){
       var name=_url;
-      var url=_url+".css";
+      var url=_url+".css?"+returnVersion();
       if(window.localStorage){
         var xhr;
         var css=localStorage.getItem(name);
@@ -207,27 +214,30 @@
       };
       per();
     };
-    var returnVersion=function(){ return min==="" ? ""+new Date().getTime() : ""+new Date().getMonth()+new Date().getDate()+Math.ceil((new Date().getHours()+1)/2);};
+    var returnVersion=function(){ var newDate=new Date();return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/2);};
     var val=_val||{};
     var thisVal={
       dataDir:val.dataDir||baseDir,
       dataCss:val.dataCss||[],
       dataJs:val.dataJs||[],
-      callBack:val.callBack||null
+      callBack:val.callBack||null,
+      updateVersion:val.updateVersion||false//当设置为true时,每两个小时更新一个版本,当有多个执行时,只需在最后一个执行时设置为true,因为连续更新缓存版本,会误导后面的版本判断,故添加此参数
     };
     this.dataDir=thisVal.dataDir;
     this.dataCss=thisVal.dataCss;
     this.dataJs=thisVal.dataJs;
     this.callBack=thisVal.callBack;
+    this.updateVersion=thisVal.updateVersion;
     this.run=function(){
       thisVersion=returnVersion();
       var thisDataCss=removeEmpty(this.dataCss.join(",").replace(/_css/g,modDir).split(","));
       var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,modDir).split(","));
       var thisBaseDir=this.dataDir;
       var callBack=this.callBack;
+      var updateVersion=this.updateVersion;
       baseDir=thisBaseDir;
       var loadAllCallback=function(){
-        localStorage.setItem("version",thisVersion);
+        if(updateVersion||min.length===0) localStorage.setItem("byLoadDataVersion",thisVersion);
         if(callBack!=null) callBack.call(this);
       };
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
@@ -238,6 +248,7 @@
   thisLoader.dataDir=baseDir;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
-  thisLoader.run(); 
-  byLoader.version="v0.00.010";
+  thisLoader.updateVersion=update;
+  thisLoader.run();
+  byLoader.version="v0.00.011";
 })();
