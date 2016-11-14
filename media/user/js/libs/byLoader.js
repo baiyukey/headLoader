@@ -108,7 +108,7 @@
       else{
         linkJs(url);
       }
-    };
+    };//加载js
     var loadCss=function(_url,callback){
       var name=_url;
       var url=_url+".css?"+returnVersion();
@@ -150,7 +150,7 @@
       else{
         linkCss(url);
       }
-    };//往页面写入js脚本  
+    };//加载css
     var writeJs=function(_url,text){
       var url=_url;
       var head=document.getElementsByTagName('HEAD').item(0);
@@ -164,7 +164,7 @@
       }
       link.innerHTML=text;
       head.appendChild(link);
-    };//往页面写入js脚本  
+    };//往页面写入js
     var writeCss=function(_url,_text){
       var head=document.getElementsByTagName('HEAD').item(0);
       var link=document.createElement("style");
@@ -172,7 +172,7 @@
       link.setAttribute("data-name",_url);
       link.innerHTML=_text;
       head.appendChild(link);
-    };//往页面引入css脚本  
+    };//往页面写入css
     var linkJs=function(url){
       var head=document.getElementsByTagName('HEAD').item(0);
       var link=document.createElement("script");
@@ -184,7 +184,7 @@
       }
       link.src=url;
       head.appendChild(link);
-    };//往页面引入css样式  
+    };//往页面引入js  
     var linkCss=function(url){
       var head=document.getElementsByTagName('HEAD').item(0);
       var link=document.createElement("link");
@@ -194,7 +194,7 @@
       link.media="screen";
       link.href=url;
       head.appendChild(link);
-    };
+    };//往页面引入css
     var loadSort=function(_thisDir,_modules,_type,callBack){
       var thisDir=_thisDir;
       var modules=removeRepeat(_modules);
