@@ -214,14 +214,17 @@
       };
       per();
     };
-    var returnVersion=function(){ var newDate=new Date();return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/2);};
+    var returnVersion=function(){
+      var newDate=new Date();
+      return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/2);
+    };
     var val=_val||{};
     var thisVal={
       dataDir:val.dataDir||baseDir,
       dataCss:val.dataCss||[],
       dataJs:val.dataJs||[],
       callBack:val.callBack||null,
-      updateVersion:val.updateVersion||false//当设置为true时,每两个小时更新一个版本,当有多个执行时,只需在最后一个执行时设置为true,因为连续更新缓存版本,会误导后面的版本判断,故添加此参数
+      updateVersion:val.updateVersion||false//当设置为true时,每两个小时更新一个版本,注意当有多个byLoader实例同时执行时,只需在最后一个执行时设置为true,因为连续更新缓存版本,会误导后面的版本判断,故添加此参数
     };
     this.dataDir=thisVal.dataDir;
     this.dataCss=thisVal.dataCss;
@@ -237,7 +240,9 @@
       var updateVersion=this.updateVersion;
       baseDir=thisBaseDir;
       var loadAllCallback=function(){
-        if(updateVersion||min.length===0) localStorage.setItem("byLoadDataVersion",thisVersion);
+        //更新版本号会让程序认为缓存数据是最新的(版本号为"00000"时除外),从而在下次更新版本号之前可以优先从缓存中读取 
+        if(thisVersion!==priVersion&&updateVersion===true) localStorage.setItem("byLoadDataVersion",thisVersion);
+        if(min.length===0||priVersion===null) localStorage.setItem("byLoadDataVersion","00000");//本地模式,强制thisVersion!==priVersion
         if(callBack!=null) callBack.call(this);
       };
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
@@ -250,5 +255,5 @@
   thisLoader.dataJs=dataJs;
   thisLoader.updateVersion=update;
   thisLoader.run();
-  byLoader.version="v0.00.011";
+  byLoader.version="v0.00.012";
 })();
