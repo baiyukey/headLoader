@@ -195,7 +195,7 @@
       link.href=url;
       head.appendChild(link);
     };//往页面引入css
-    var loadSort=function(_thisDir,_modules,_type,callBack){
+    var loadSort=function(_thisDir,_modules,_type,callback){
       var thisDir=_thisDir;
       var modules=removeRepeat(_modules);
       var fileType=_type.toUpperCase();
@@ -204,7 +204,7 @@
       var per=function(){
         i++;
         if(i>=modules.length){
-          if(typeof(callBack)!="undefined") callBack.call(this);
+          if(typeof(callback)!="undefined") callback.call(this);
           return false;
         }
         else{
@@ -223,27 +223,27 @@
       dataDir:val.dataDir||baseDir,
       dataCss:val.dataCss||[],
       dataJs:val.dataJs||[],
-      callBack:val.callBack||null,
+      callback:val.callback||null,
       updateVersion:val.updateVersion||false//当设置为true时,每两个小时更新一个版本,注意当有多个byLoader实例同时执行时,只需在最后一个执行时设置为true,因为连续更新缓存版本,会误导后面的版本判断,故添加此参数
     };
     this.dataDir=thisVal.dataDir;
     this.dataCss=thisVal.dataCss;
     this.dataJs=thisVal.dataJs;
-    this.callBack=thisVal.callBack;
+    this.callback=thisVal.callback;
     this.updateVersion=thisVal.updateVersion;
     this.run=function(){
       thisVersion=returnVersion();
       var thisDataCss=removeEmpty(this.dataCss.join(",").replace(/_css/g,modDir).split(","));
       var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,modDir).split(","));
       var thisBaseDir=this.dataDir;
-      var callBack=this.callBack;
+      var callback=this.callback;
       var updateVersion=this.updateVersion;
       baseDir=thisBaseDir;
       var loadAllCallback=function(){
         //更新版本号会让程序认为缓存数据是最新的(版本号为"00000"时除外),从而在下次更新版本号之前可以优先从缓存中读取 
         if(thisVersion!==priVersion&&updateVersion===true) localStorage.setItem("byLoadDataVersion",thisVersion);
         if(min.length===0||priVersion===null) localStorage.setItem("byLoadDataVersion","00000");//本地模式,强制thisVersion!==priVersion
-        if(callBack!=null) callBack.call(this);
+        if(callback!=null) callback.call(this);
       };
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
       loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
