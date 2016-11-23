@@ -10,8 +10,8 @@ $(function(){
         "mark":true,
         "markOpacity":0.15,
         "markColor":"#FFF",
-        "callBack":false,
-        "callBackArr":null,
+        "callback":false,
+        "callbackArr":null,
         "closeBtn":true,
         "animate":100
       },val);
@@ -87,7 +87,7 @@ $(function(){
         }
         $window[0].onresize=fixMarkSize;*/
         fixMarkSize();
-        val.callBack&&typeof(val.callBack)==="function" ? val.callBack.call(this,val.callBackArr) : null;
+        val.callback&&typeof(val.callback)==="function" ? val.callback.call(this,val.callbackArr) : null;
         $showPanel.find("input[type='text']:visible").length>0 ? $showPanel.find("input[type='text']:visible:eq(0)").focus() : $showPanel.find("textarea:eq(0)").focus();
       };
       var fixMarkSize=function(){
@@ -248,8 +248,8 @@ $(function(){
       }*/
       val=$.extend({
         "fadeTime":parseInt($document.find("#"+showPanelId).attr("data-fadetime")),
-        "callBack":false,
-        "callBackArr":null,
+        "callback":false,
+        "callbackArr":null,
         "animate":100
       },val);
       var checkSuccess=function(){
@@ -290,7 +290,7 @@ $(function(){
                 $window[0].oldOnresize=undefined;
               }
             }*/
-            val.callBack&&typeof(val.callBack)==="function" ? val.callBack.call(this,val.callBackArr) : null;
+            val.callback&&typeof(val.callback)==="function" ? val.callback.call(this,val.callbackArr) : null;
           };
           $document.find("#showPanel"+thisId).stop(true,false).animate({
             "top":($document.find("#showPanel"+thisId).offset().top-val.animate),
@@ -298,7 +298,7 @@ $(function(){
           },val.fadeTime).fadeOut(0,clearThis);
         }//未成功退出的强制退出
         else{
-          val.callBack&&typeof(val.callBack)==="function" ? val.callBack.call(this,val.callBackArr) : null;
+          val.callback&&typeof(val.callback)==="function" ? val.callback.call(this,val.callbackArr) : null;
         }
       };
       $this.closest(".showPanel").find("a.byAlertClose").trigger("click");
