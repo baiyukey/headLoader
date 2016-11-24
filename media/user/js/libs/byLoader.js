@@ -67,7 +67,6 @@
   }
   window.byLoader=function(_val){
     var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
-    var priVersion=localStorage.getItem("byLoadDataVersion");
     var thisVersion="";
     var loadJs=function(_thisDir,callback){
       var name=_thisDir;
@@ -75,7 +74,8 @@
       if(window.localStorage){
         var xhr;
         var js=localStorage.getItem(name);
-        if(js==null||js.length==0||thisVersion!=priVersion){
+        var getItemVersion=localStorage.getItem(name+"Version");
+        if(js==null||js.length==0||getItemVersion!=returnVersion()){
           if(window.XMLHttpRequest){
             xhr=new XMLHttpRequest();
           }
@@ -88,9 +88,10 @@
             xhr.onreadystatechange=function(){
               if(xhr.readyState==4&&xhr.status==200){
                 js=xhr.responseText;
-                localStorage.setItem(name,js);
                 js=js==null ? "" : js;
                 writeJs(name,js);
+                localStorage.setItem(name,js);
+                localStorage.setItem(name+"Version",returnVersion());
                 if(callback!=null){
                   callback(); //回调，执行下一个引用  
                 }
@@ -115,7 +116,8 @@
       if(window.localStorage){
         var xhr;
         var css=localStorage.getItem(name);
-        if(css==null||css.length==0||thisVersion!=priVersion){
+        var getItemVersion=localStorage.getItem(name+"Version");
+        if(css==null||css.length==0||getItemVersion!=returnVersion()){
           if(window.XMLHttpRequest){
             xhr=new XMLHttpRequest();
           }
@@ -129,9 +131,10 @@
               if(xhr.readyState==4&&xhr.status==200){
                 css=xhr.responseText;
                 css=css==null ? "" : css;
-                css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理  
-                localStorage.setItem(name,css);
+                css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理
                 writeCss(name,css);
+                localStorage.setItem(name,css);
+                localStorage.setItem(name+"Version",returnVersion());
                 if(callback!=null){
                   callback(); //回调，执行下一个引用  
                 }
@@ -223,26 +226,20 @@
       dataDir:val.dataDir||baseDir,
       dataCss:val.dataCss||[],
       dataJs:val.dataJs||[],
-      callback:val.callback||null,
-      updateVersion:val.updateVersion||false//当设置为true时,每两个小时更新一个版本,注意当有多个byLoader实例同时执行时,只需在最后一个执行时设置为true,因为连续更新缓存版本,会误导后面的版本判断,故添加此参数
+      callback:val.callback||null
     };
     this.dataDir=thisVal.dataDir;
     this.dataCss=thisVal.dataCss;
     this.dataJs=thisVal.dataJs;
     this.callback=thisVal.callback;
-    this.updateVersion=thisVal.updateVersion;
     this.run=function(){
       thisVersion=returnVersion();
       var thisDataCss=removeEmpty(this.dataCss.join(",").replace(/_css/g,modDir).split(","));
       var thisDataJs=removeEmpty(this.dataJs.join(",").replace(/_js/g,modDir).split(","));
       var thisBaseDir=this.dataDir;
       var callback=this.callback;
-      var updateVersion=this.updateVersion;
       baseDir=thisBaseDir;
       var loadAllCallback=function(){
-        //更新版本号会让程序认为缓存数据是最新的(版本号为"00000"时除外),从而在下次更新版本号之前可以优先从缓存中读取 
-        if(thisVersion!==priVersion&&updateVersion===true) localStorage.setItem("byLoadDataVersion",thisVersion);
-        if(min.length===0||priVersion===null) localStorage.setItem("byLoadDataVersion","00000");//本地模式,强制thisVersion!==priVersion
         if(callback!=null) callback.call(this);
       };
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
@@ -253,7 +250,6 @@
   thisLoader.dataDir=baseDir;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
-  thisLoader.updateVersion=update;
   thisLoader.run();
-  byLoader.version="v0.00.012";
+  byLoader.version="v0.00.013";
 })();
