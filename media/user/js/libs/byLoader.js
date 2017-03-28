@@ -132,6 +132,7 @@
                 css=xhr.responseText;
                 css=css==null ? "" : css;
                 css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理
+                css=css.replace(/\[v]/g,returnVersion(24)); //css文件中的静态文件缓存24小时更新一次
                 writeCss(name,css);
                 localStorage.setItem(name,css);
                 localStorage.setItem(name+"Version",returnVersion());
@@ -217,9 +218,11 @@
       };
       per();
     };
-    var returnVersion=function(){
+    var returnVersion=function(_hours){
       var newDate=new Date();
-      return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/2);
+      var hours=_hours||2;
+      hours=Math.min(24,hours);
+      return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/hours);
     };
     var val=_val||{};
     var thisVal={
@@ -251,5 +254,5 @@
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.013";
+  byLoader.version="v0.00.014";
 })();
