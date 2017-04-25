@@ -32,7 +32,7 @@
         <h5>loading...</h5>
         <h6>插件简介</h6>
         <ul>
-          <li>byLoader用于加载css及js文档,当前版本为v0.00.014,他有如下特点:</li>
+          <li>byLoader用于加载css及js文档,当前版本为v0.00.015,他有如下特点:</li>
           <li>1.可以实现一个script标签加载页面所需的全部css及js文档;</li>
           <li>2.对加载文档进行缓存可控化,每两个小时更新一次(需要设置参数),防止版本迭代时不能及时更新页面;</li>
           <li>3.当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,加快页面载入速度，减少闪烁;</li>
@@ -92,11 +92,12 @@
           <li>2.css模块的路径在基础路径下的"css"目录中,js模块的路径在基础路径下的"js"目录中;</li>
           <li>3.当data-css包含"_css"模块时,代表byLoader自动加载页面css,例如当页面为127.0.0.1/index/index.html,则对应的css为127.0.0.1/[data-dir]/css/index/index.css;</li>
           <li>4.当data-js包含"_js"模块时,代表byLoader自动加载页面js,例如当页面为127.0.0.1/index/index.html,则对应的js为127.0.0.1/[data-dir]/js/index/index.js;</li>
-          <li>5.支持require.js,当data-js包含"require"模块时,则会自动为require的data-main属性自动定义为[data-dir]/js/index/index,正因如此,data-main模块将脱离byLoader缓存机制;</li>
+          <li>5.当需要给加载的css或js标签添加属性时,直接在模块地址后追加"_js|属性名=属性值|属性名=属性值|...",例如loader.dataJs=['_js|id=abc'];</li>
           <li>6.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,版本每两个小时更新一次;</li>
           <li>7.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓;</li>
           <li>8.请使用相关压缩程序将js及css进行压缩成"min"版本,建议使用YUI Compressor;</li>
           <li>9.当使用byLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用byLoader.min.js.</li>
+          <li>10.当模块为完整的http地址时,例如loader.dataJs=['http://dwz.cn/byLoader'],将直接创建标签并加载,不进行任何处理.</li>
         </ul>
         <h6>更多..</h6>
         <p>
