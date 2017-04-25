@@ -1,5 +1,5 @@
 ﻿/* 
- see: https://github.com/baiyukey/byLoader for details
+ see detail: http://dwz.cn/byloader
  */
 ;(function(){
   var removeRepeat=function(_this){
@@ -53,14 +53,12 @@
   }
   if(thisScript.hasAttribute("data-css")){
     dataCss=thisScript.getAttribute("data-css").split(",");//.replace(/_css/g,modDir);
-    //dataCss.push(modDir);
   }
   else{
     if(reLog) console.log('%c友情提示:script标签无"data-css"属性',"color:#69F;");
   }
   if(thisScript.hasAttribute("data-js")){
     dataJs=thisScript.getAttribute("data-js").split(",");//.replace(/_js/g,modDir);
-    //if(thisScript.getAttribute("data-js").indexOf("require")<0) dataJs.push(modDir);
   }
   else{
     if(reLog) console.log('%c友情提示:script标签无"data-js"属性',"color:#69F;");
@@ -68,10 +66,18 @@
   window.byLoader=function(_val){
     var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
     var thisVersion="";
+    var setAttribute=function(_node,_property){
+      if(_property.length>0){
+        _property.forEach(function(e,i){
+          _node.setAttribute(e.split("=")[0],e.split("=")[1]);
+        });
+      }
+    };
     var loadJs=function(_thisDir,callback){
-      var name=_thisDir;
-      var url=_thisDir+".js?"+returnVersion();
-      if(window.localStorage){
+      if(window.localStorage&&_thisDir.indexOf("http")!==0){
+        var thisDir=_thisDir.split("|")[0];
+        var name=thisDir.indexOf(".js")>0 ? thisDir.replace(".js","")+min : thisDir+min;
+        var url=thisDir.indexOf(".js")>0 ? thisDir.replace(".js",(min+".js"))+"?"+returnVersion() : thisDir+min+".js?"+returnVersion();
         var xhr;
         var js=localStorage.getItem(name);
         var getItemVersion=localStorage.getItem(name+"Version");
@@ -89,7 +95,7 @@
               if(xhr.readyState==4&&xhr.status==200){
                 js=xhr.responseText;
                 js=js==null ? "" : js;
-                writeJs(name,js);
+                writeJs(_thisDir,js);
                 localStorage.setItem(name,js);
                 localStorage.setItem(name+"Version",returnVersion());
                 if(callback!=null){
@@ -100,20 +106,21 @@
           }
         }
         else{
-          writeJs(name,js);
+          writeJs(_thisDir,js);
           if(callback!=null){
             callback();  //回调，执行下一个引用  
           }
         }
       }
       else{
-        linkJs(url);
+        linkJs(_thisDir);
       }
     };//加载js
     var loadCss=function(_url,callback){
-      var name=_url;
-      var url=_url+".css?"+returnVersion();
-      if(window.localStorage){
+      if(window.localStorage&&_url.indexOf("http")!==0){
+        var thisDir=_url.split("|")[0];
+        var name=thisDir.indexOf(".css")>0 ? thisDir.replace(".css","")+min : thisDir+min;
+        var url=thisDir.indexOf(".css")>0 ? thisDir.replace(".css",(min+".css"))+"?"+returnVersion() : thisDir+min+".css?"+returnVersion();
         var xhr;
         var css=localStorage.getItem(name);
         var getItemVersion=localStorage.getItem(name+"Version");
@@ -133,7 +140,7 @@
                 css=css==null ? "" : css;
                 css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理
                 css=css.replace(/\[v]/g,returnVersion(24)); //css文件中的静态文件缓存24小时更新一次
-                writeCss(name,css);
+                writeCss(_url,css);
                 localStorage.setItem(name,css);
                 localStorage.setItem(name+"Version",returnVersion());
                 if(callback!=null){
@@ -144,60 +151,53 @@
           }
         }
         else{
-          //css=css.replace(/\[dataDir]/g,baseDir); //css文件的动态路径需单独处理  
-          writeCss(name,css);
+          writeCss(_url,css);
           if(callback!=null){
             callback(); //回调，执行下一个引用  
           }
         }
       }
       else{
-        linkCss(url);
+        linkCss(_url);
       }
     };//加载css
     var writeJs=function(_url,text){
       var url=_url;
       var head=document.getElementsByTagName('HEAD').item(0);
-      var link=document.createElement("script");
-      link.setAttribute("type","text/javascript");
-      link.setAttribute("data-name",url);
-      if(url.indexOf("require")>0){
-        /* link.defer=true;
-         link.async=true;*/
-        link.setAttribute("data-main",baseDir+"js/"+modDir+min);
-      }
-      link.innerHTML=text;
-      head.appendChild(link);
+      var thisTag=document.createElement("script");
+      setAttribute(thisTag,url.split("|").splice(1));
+      thisTag.setAttribute("type","text/javascript");
+      thisTag.setAttribute("data-name",url.split("|")[0].replace(".js","")+min);
+      thisTag.innerHTML=text;
+      head.appendChild(thisTag);
     };//往页面写入js
     var writeCss=function(_url,_text){
       var head=document.getElementsByTagName('HEAD').item(0);
-      var link=document.createElement("style");
-      link.setAttribute("type","text/css");
-      link.setAttribute("data-name",_url);
-      link.innerHTML=_text;
-      head.appendChild(link);
+      var thisTag=document.createElement("style");
+      setAttribute(thisTag,_url.split("|").splice(1));
+      thisTag.setAttribute("type","text/css");
+      thisTag.setAttribute("data-name",_url.split("|")[0].replace(".css","")+min);
+      thisTag.innerHTML=_text;
+      head.appendChild(thisTag);
     };//往页面写入css
     var linkJs=function(url){
       var head=document.getElementsByTagName('HEAD').item(0);
-      var link=document.createElement("script");
+      var thisTag=document.createElement("script");
       //link.type="text/javascript";
-      if(url.indexOf("require.js")>0){
-        //link.defer=true;
-        //link.async=true;
-        link.setAttribute("data-main",baseDir+"js/"+modDir+min);
-      }
-      link.src=url;
-      head.appendChild(link);
+      setAttribute(thisTag,url.split("|").splice(1));
+      thisTag.src=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".js","")+min+".js?"+returnVersion();
+      head.appendChild(thisTag);
     };//往页面引入js  
     var linkCss=function(url){
       var head=document.getElementsByTagName('HEAD').item(0);
-      var link=document.createElement("link");
-      link.type="text/css";
-      link.rel="stylesheet";
-      link.rev="stylesheet";
-      link.media="screen";
-      link.href=url;
-      head.appendChild(link);
+      var thisTag=document.createElement("link");
+      setAttribute(thisTag,url.split("|").splice(1));
+      thisTag.type="text/css";
+      thisTag.rel="stylesheet";
+      thisTag.rev="stylesheet";
+      thisTag.media="screen";
+      thisTag.href=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".css","")+min+".css?"+returnVersion();
+      head.appendChild(thisTag);
     };//往页面引入css
     var loadSort=function(_thisDir,_modules,_type,callback){
       var thisDir=_thisDir;
@@ -212,8 +212,9 @@
           return false;
         }
         else{
-          if(fileType==="JS") loadJs(thisDir+modules[i]+min,per);
-          if(fileType==="CSS") loadCss(thisDir+modules[i]+min,per);
+          var thisModule=modules[i].indexOf("http://")===0||modules[i].indexOf("https://")===0 ? modules[i] : (thisDir+modules[i]);
+          if(fileType==="JS") loadJs(thisModule,per);
+          else if(fileType==="CSS") loadCss(thisModule,per);
         }
       };
       per();
@@ -254,5 +255,5 @@
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.014";
+  byLoader.version="v0.00.015";
 })();
