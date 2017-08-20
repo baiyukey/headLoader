@@ -4,7 +4,7 @@
  */
 $(function(){
   $.fn.extend({
-    "byAlert":function(val){
+    "elfAlert":function(val){
       val=$.extend({
         "fadeTime":300,
         "mark":true,
@@ -47,7 +47,7 @@ $(function(){
       var recordPlaceId="recordPlace_"+alertId;
       var closeBtnId="closeBtn_"+alertId;
       var bodyMarkHtml='<div id="'+bodyMarkId+'" class="bodyMark" style="position:absolute; width:'+$document.width()+'px; height:'+$document.height()+'px; z-index:888888; left:0; top:0; background:'+val.markColor+'; display:none;_position:absolute;_height:'+$document.outerHeight()+';"></div>';
-      var showPanelHtml='<div id="'+showPanelId+'" data-fadetime="'+val.fadeTime+'" data-hisdisplay="'+alertContDisplay+'" class="showPanel" style="display:none; width:'+alertContOuterWidth+'px; height:'+alertContOuterHeight+'px; position:absolute;_position:absolute; left:0; top:0;"><a href="#" id="'+closeBtnId+'" class="byAlertClose" title="关闭" style="position:absolute; right:0; top:0; display:block; z-index:1;"></a><div class="byAlertCont" style="position:absolute;padding:0;"></div></div><div id="'+disableMarkId+'" class="disableMark" style="position:absolute; display:none; width:'+$document.width()+'px; height:'+$document.height()+'px; z-index:999999; left:0; top:0; background:#ffffff;_position:absolute;_height:'+$document.outerHeight()+';"></div>';
+      var showPanelHtml='<div id="'+showPanelId+'" data-fadetime="'+val.fadeTime+'" data-hisdisplay="'+alertContDisplay+'" class="showPanel" style="display:none; width:'+alertContOuterWidth+'px; height:'+alertContOuterHeight+'px; position:absolute;_position:absolute; left:0; top:0;"><a href="#" id="'+closeBtnId+'" class="elfAlertClose" title="关闭" style="position:absolute; right:0; top:0; display:block; z-index:1;"></a><div class="elfAlertCont" style="position:absolute;padding:0;"></div></div><div id="'+disableMarkId+'" class="disableMark" style="position:absolute; display:none; width:'+$document.width()+'px; height:'+$document.height()+'px; z-index:999999; left:0; top:0; background:#ffffff;_position:absolute;_height:'+$document.outerHeight()+';"></div>';
       $document.find("body").append(bodyMarkHtml+showPanelHtml);
       $alertCont.before('<div id="'+recordPlaceId+'" style="display:none;"></div>');
       var $bodyMark=$document.find("#"+bodyMarkId);
@@ -102,7 +102,7 @@ $(function(){
         $window[0].oldOnresize ? $window[0].oldOnresize.call(this) : null;
       };
       var showAlert=function(){
-        $alertCont.show().insertBefore($showPanel.find("div.byAlertCont"));
+        $alertCont.show().insertBefore($showPanel.find("div.elfAlertCont"));
         var panelXy=new getShowPanelXy();
         $disableMark.css({
           "opacity":"0.01",
@@ -231,7 +231,7 @@ $(function(){
       //$showPanel.on("click","input.cancel",exitAlert);//如果有取消按钮
       return $alertCont;
     },
-    "byAlertExit":function(val){
+    "elfAlertExit":function(val){
       var $this=$(this);
       var showPanelId=$this.closest(".showPanel").attr("id");
       var thisOpacity=$("#"+showPanelId).css("opacity");
@@ -301,7 +301,7 @@ $(function(){
           val.callback&&typeof(val.callback)==="function" ? val.callback.call(this,val.callbackArr) : null;
         }
       };
-      $this.closest(".showPanel").find("a.byAlertClose").trigger("click");
+      $this.closest(".showPanel").find("a.elfAlertClose").trigger("click");
       setTimeout(checkSuccess,val.fadeTime);
       return $(this);
     }
