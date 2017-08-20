@@ -63,7 +63,7 @@
   else{
     if(reLog) console.log('%c友情提示:script标签无"data-js"属性',"color:#69F;");
   }
-  window.byLoader=function(_val){
+  window.headLoader=function(_val){
     var min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";
     var thisVersion="";
     var setAttribute=function(_node,_property){
@@ -250,10 +250,10 @@
       loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
     };
   };
-  var thisLoader=new byLoader();
+  var thisLoader=new headLoader();
   thisLoader.dataDir=baseDir;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.run();
-  byLoader.version="v0.00.015";
+  headLoader.version="v0.00.015";
 })();
