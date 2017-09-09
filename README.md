@@ -1,7 +1,7 @@
 欢迎您使用headLoader
 ===
 ##插件简介
-    headLoader用于加载css及js文档,当前版本为v0.00.015,他有如下特点:
+    headLoader用于加载css及js文档,当前版本为v0.00.017,他有如下特点:
     1.可以实现一个script标签加载页面所需的全部css及js文档;
     2.对加载文档进行缓存可控化,每两个小时更新一次(需要设置参数),防止版本迭代时不能及时更新页面;
     3.当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,减少页面载入时的闪烁;
@@ -52,8 +52,8 @@
     7.如果是私有IP或者localhost,为了开发调试方便每刷新一次更新一次,由此加载速度较慢,请知晓;
     8.请使用相关压缩程序将js及css进行压缩成"min"版本,建议使用YUI Compressor;
     9.当使用headLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用headLoader.min.js.
-    10.当模块为完整的http地址时,例如loader.dataJs=['http://dwz.cn/headLoader'],将直接创建标签并加载,不进行任何处理.
+    10.当模块为完整的http地址时,例如loader.dataJs=['http://dwz.cn/headLoader'],将直接创建标签并加载,不进行任何处理,当然也就没有了缓存管理机制.
 ##更多...
       https://github.com/baiyukey/headLoader
       作者:龙马印
-      联系方式:baiyukey@hotmail.com
+      联系方式:baiyukey@qq.com
