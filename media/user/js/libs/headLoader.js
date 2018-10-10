@@ -1,8 +1,8 @@
 ﻿/* 
  author:baiyukey@qq.com
  see detail: http://www.uielf.com/headloaderIndex.html
- version:headLoader.version()
- */
+ version:new headLoader().version
+*/
 ;(function(){
   var reMin=function(){
     return /^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(window.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
@@ -50,7 +50,7 @@
   }
   var reLog=console.log&&thisScript.getAttribute("src").indexOf(".min")<0;
   var staticDir=location.pathname.split("/")[1]==="static" ? "/static" : "/";
-  var modDir=location.pathname.replace(staticDir,"").replace(".html","");
+  var modDir=location.pathname.replace(staticDir,"").replace(".html","")||"index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
   if(thisScript.hasAttribute("data-update-version")){
     update=thisScript.getAttribute("data-update-version");
@@ -200,7 +200,7 @@
       setAttribute(thisTag,url.split("|").splice(1));
       thisTag.src=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".js","")+min+".js?"+returnVersion();
       head.appendChild(thisTag);
-    };//往页面引入js  
+    };//往页面引入js
     var linkCss=function(url){
       var head=document.getElementsByTagName('HEAD').item(0);
       var thisTag=document.createElement("link");
@@ -256,7 +256,7 @@
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
       loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
     };
-    this.version="v0.00.017";
+    this.version="v0.00.018";
   };
   var thisLoader=new headLoader();
   thisLoader.dataDir=baseDir;
