@@ -54,6 +54,6 @@
     9.当使用headLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用headLoader.min.js.<br>
     10.当模块为完整的http地址时,例如loader.dataJs=['http://dwz.cn/headLoader'],将直接创建标签并加载,不进行任何处理,当然也就没有了缓存管理机制.
 ##更多...<br>
-      https://github.com/baiyukey/headLoader<br>
+      http://www.uielf.com/headLoader<br>
       作者:龙马印<br>
       联系方式:baiyukey@qq.com<br>
