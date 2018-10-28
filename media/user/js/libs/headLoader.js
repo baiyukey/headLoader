@@ -50,7 +50,8 @@
   }
   var reLog=console.log&&thisScript.getAttribute("src").indexOf(".min")<0;
   var staticDir=location.pathname.split("/")[1]==="static" ? "/static" : "/";
-  var modDir=location.pathname.replace(staticDir,"").replace(".html","")||"index";
+  var modDir=location.pathname.replace(staticDir,"").replace(".html","");
+  if(location.pathname.replace(/.*\//,"").replace(".html","")==="") modDir+="index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
   if(thisScript.hasAttribute("data-update-version")){
     update=thisScript.getAttribute("data-update-version");
@@ -200,7 +201,7 @@
       setAttribute(thisTag,url.split("|").splice(1));
       thisTag.src=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".js","")+min+".js?"+returnVersion();
       head.appendChild(thisTag);
-    };//往页面引入js
+    };//往页面引入js  
     var linkCss=function(url){
       var head=document.getElementsByTagName('HEAD').item(0);
       var thisTag=document.createElement("link");
@@ -256,7 +257,7 @@
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
       loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
     };
-    this.version="v0.00.018";
+    this.version="v0.00.019";
   };
   var thisLoader=new headLoader();
   thisLoader.dataDir=baseDir;
