@@ -91,7 +91,7 @@
       if(window.localStorage&&_thisDir.indexOf("http")!==0){
         var thisDir=_thisDir.split("|")[0];
         var name=thisDir.indexOf(".js")>0 ? thisDir.replace(".js","")+min : thisDir+min;
-        var url=thisDir.indexOf(".js")>0 ? thisDir.replace(".js",(min+".js"))+"?"+returnVersion() : thisDir+min+".js?"+returnVersion();
+        var url=thisDir.indexOf(".js")>0 ? thisDir.replace(".js",(min+".js"))+"?v="+returnVersion() : thisDir+min+".js?v="+returnVersion();
         var xhr;
         var js=localStorage.getItem(name);
         var getItemVersion=localStorage.getItem(name+"Version");
@@ -134,7 +134,7 @@
       if(window.localStorage&&_url.indexOf("http")!==0){
         var thisDir=_url.split("|")[0];
         var name=thisDir.indexOf(".css")>0 ? thisDir.replace(".css","")+min : thisDir+min;
-        var url=thisDir.indexOf(".css")>0 ? thisDir.replace(".css",(min+".css"))+"?"+returnVersion() : thisDir+min+".css?"+returnVersion();
+        var url=thisDir.indexOf(".css")>0 ? thisDir.replace(".css",(min+".css"))+"?v="+returnVersion() : thisDir+min+".css?v="+returnVersion();
         var xhr;
         var css=localStorage.getItem(name);
         var getItemVersion=localStorage.getItem(name+"Version");
@@ -176,6 +176,7 @@
       }
     };//加载css
     var writeJs=function(_url,text){
+      if(document.getElementsByTagName('HEAD').length===0) return false;
       var url=_url;
       var head=document.getElementsByTagName('HEAD').item(0);
       var thisTag=document.createElement("script");
@@ -186,6 +187,7 @@
       head.appendChild(thisTag);
     };//往页面写入js
     var writeCss=function(_url,_text){
+      if(document.getElementsByTagName('HEAD').length===0) return false;
       var head=document.getElementsByTagName('HEAD').item(0);
       var thisTag=document.createElement("style");
       setAttribute(thisTag,_url.split("|").splice(1));
@@ -195,14 +197,16 @@
       head.appendChild(thisTag);
     };//往页面写入css
     var linkJs=function(url){
+      if(document.getElementsByTagName('HEAD').length===0) return false;
       var head=document.getElementsByTagName('HEAD').item(0);
       var thisTag=document.createElement("script");
       //link.type="text/javascript";
       setAttribute(thisTag,url.split("|").splice(1));
-      thisTag.src=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".js","")+min+".js?"+returnVersion();
+      thisTag.src=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".js","")+min+".js?v="+returnVersion();
       head.appendChild(thisTag);
     };//往页面引入js  
     var linkCss=function(url){
+      if(document.getElementsByTagName('HEAD').length===0) return false;
       var head=document.getElementsByTagName('HEAD').item(0);
       var thisTag=document.createElement("link");
       setAttribute(thisTag,url.split("|").splice(1));
@@ -210,7 +214,7 @@
       thisTag.rel="stylesheet";
       thisTag.rev="stylesheet";
       thisTag.media="screen";
-      thisTag.href=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".css","")+min+".css?"+returnVersion();
+      thisTag.href=url.indexOf("http")===0 ? url.split("|")[0] : url.split("|")[0].replace(".css","")+min+".css?v="+returnVersion();
       head.appendChild(thisTag);
     };//往页面引入css
     var loadSort=function(_thisDir,_modules,_type,callback){
@@ -220,6 +224,7 @@
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appVersion.split(";")[1].replace("MSIE",""))<9&&fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
       var i=-1;
       var per=function(){
+        if(document.getElementsByTagName('HEAD').length===0) return false;
         i++;
         if(i>=modules.length){
           if(typeof(callback)==="function") callback.call(this);
@@ -257,7 +262,7 @@
       var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
       loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
     };
-    this.version="v0.00.019";
+    this.version="v0.00.021";
   };
   var thisLoader=new headLoader();
   thisLoader.dataDir=baseDir;
