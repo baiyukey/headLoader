@@ -1,7 +1,7 @@
 欢迎您使用headLoader
 ===
 ##插件简介<br>
-    headLoader用于加载css及js文档,当前版本为v0.00.017,他有如下特点:<br>
+    headLoader用于加载css及js文档,当前版本为v0.00.022,他有如下特点:<br>
     1.可以实现一个script标签加载页面所需的全部css及js文档;<br>
     2.对加载文档进行缓存可控化,每两个小时更新一次(需要设置参数),防止版本迭代时不能及时更新页面;<br>
     3.当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,减少页面载入时的闪烁;<br>
@@ -10,7 +10,7 @@
     6.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本.<br>
 ##使用方法(任选其一)<br>
     1.标签属性定义法(推荐):<br>
-      <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.elfAlert,_js" src="/media/user/js/libs/headLoader.min.js"></script>
+      <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.elfAlert,_js" src="/media/user/js.min/libs/headLoader.min.js"></script>
         
     2.命令行语句法:
       <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
