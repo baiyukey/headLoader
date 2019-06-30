@@ -259,10 +259,10 @@
       var loadAllCallback=function(){
         if(typeof(callback)==="function") callback.call(this);
       };
-      var loadCssCallback=function(){ loadSort(thisBaseDir+"js/",thisDataJs,"js",loadAllCallback);};
-      loadSort(thisBaseDir+"css/",thisDataCss,"css",loadCssCallback);
+      var loadCssCallback=function(){ loadSort(thisBaseDir+(min===".min" ? "js.min/" :  "js/"),thisDataJs,"js",loadAllCallback);};
+      loadSort(thisBaseDir+(min===".min" ? "css.min/" :  "css/"),thisDataCss,"css",loadCssCallback);
     };
-    this.version="v0.00.021";
+    this.version="v0.00.022";
   };
   var thisLoader=new headLoader();
   thisLoader.dataDir=baseDir;
