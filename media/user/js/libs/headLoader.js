@@ -1,20 +1,22 @@
 ﻿/* 
  author:baiyukey@qq.com
- see detail: http://www.uielf.com/headloaderIndex.html
- cacheVersion:new headLoader().version
+ see detail: http://www.uielf.com/headLoaderIndex.html
+ headLoader version:new headLoader().version
  */
-let headLoader,headUnLoad;
-;(function(_global){
+let headLoader;
+(function(_global){
+  let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   headLoader=function(_val){
     let val=_val||{};
     this.dataDir=val.dataDir||"";
     this.dataCss=val.dataCss||[];
     this.dataJs=val.dataJs||[];
     this.callback=val.callback||null;//加载完成后的回调
-    this.multiLoad=val.multiLoad||true;//是否并行加载资源
-    this.version="v0.30.00";
+    this.version="v0.31.00";
+    this.multiLoad=val.multiLoad||(min===".min");//默认线上并行加载
+    this.showLoadCount=val.showLoadCount||false;//默认不显示加载统计
     let that=this;//关键字避嫌
-    let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+    let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0||_thisMode.indexOf("https://")===0;
     let getCacheVersion=function(_hours){
       let newDate=new Date();
       let hours=_hours||2;//每天中的每两个小时为一个值
@@ -38,101 +40,108 @@ let headLoader,headUnLoad;
       }
     };
     if(typeof _global["headLoaderCache"]==="undefined"){
-      //console.log(_global["headLoaderCache"]);
       _global["headLoaderCache"]={};
     }
-    //let thisKey='';
     let setCache=function(_cacheKey,_value){
       _global["headLoaderCache"][_cacheKey]=_value;
       _global.localStorage.setItem(_cacheKey,_value);
     };
     let getCache=function(_cacheKey){
-      return (_global["headLoaderCache"][_cacheKey]||localStorage.getItem(_cacheKey));  //没有时返回null，如果有值返回""或字符串
+      let value1=_global["headLoaderCache"][_cacheKey];
+      let value2=_global.localStorage.getItem(_cacheKey);
+      if(!value1&&value2)  _global["headLoaderCache"][_cacheKey]=value2;
+      return  _global["headLoaderCache"][_cacheKey];  //没有时返回null，如果有值返回""或字符串
     };
-    let loadJs=function(_url,_callback){
-      let thisDir=_url.split("|")[0].replace(/\/js\//,"/js"+min+"/");
-      let fileName=thisDir.indexOf(".js")>0 ? thisDir.replace(".js","")+min : thisDir+min;
-      let url=thisDir.indexOf(".js")>0 ? thisDir.replace(".js",(min+".js"))+"?v="+cacheVersion : thisDir+min+".js?v="+cacheVersion;
-      if(_url.indexOf("http://")!==0){
-        let xhr,cacheKey=fileName.replace(/\./g,'_');
-        let js=getCache(cacheKey);
-        let thisCacheVersion=getCache(cacheKey+"_cacheVersion");
-        if(js===null||thisCacheVersion!==cacheVersion){
-          if(window.XMLHttpRequest){
-            xhr=new XMLHttpRequest();
-          }
-          else if(window.ActiveXObject){
-            xhr=new ActiveXObject("Microsoft.XMLHTTP");
-          }
-          if(typeof (xhr)!=="undefined"){
-            xhr.open("GET",url);
-            xhr.send(null);
-            xhr.onreadystatechange=function(){
-              if(Number(xhr.readyState)===4&&Number(xhr.status)===200){
-                js=xhr.responseText;
-                js=js===null ? "" : js;
-                setCache(cacheKey,js);
-                setCache(cacheKey+"_cacheVersion",cacheVersion);
-                mediaLength++;//增加一次资源加载次数
-                if(typeof (_callback)==="function"){
-                  _callback(); //回调，执行下一个引用  
-                }
-              }
-            };
-          }
+    let getUrl=function(_module,_type){
+      return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min)+"."+_type;//.js不一定是最后的字符
+    };
+    let getCacheKey=function(_module,_type){
+      return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min).replace(/\./g,'_');
+    };
+    let loadJs=function(_module,_callback){
+      if(isLink(_module)){
+        linkJs(_module);
+        if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
+        return false;
+      }
+      let url=getUrl(_module,"js")+"?v="+cacheVersion;//.js不一定是最后的字符
+      let cacheKey=getCacheKey(_module,"js");
+      let xhr;
+      let js=getCache(cacheKey);
+      let thisCacheVersion=getCache(cacheKey+"_version");
+      if(js===null||thisCacheVersion!==cacheVersion){
+        if(window.XMLHttpRequest){
+          xhr=new XMLHttpRequest();
         }
-        else{
-          if(typeof (_callback)==="function") _callback();
+        else if(window.ActiveXObject){
+          xhr=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        if(typeof (xhr)!=="undefined"){
+          xhr.open("GET",url);
+          xhr.send(null);
+          xhr.onreadystatechange=function(){
+            if(Number(xhr.readyState)===4&&Number(xhr.status)===200){
+              js=xhr.responseText;
+              js=js===null ? "" : js;
+              setCache(cacheKey,js);
+              setCache(cacheKey+"_version",cacheVersion);
+              mediaLength++;//增加一次资源加载次数
+              if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
+            }
+          };
         }
       }
       else{
-        linkJs(_url.indexOf("http://")!==0 ? url : _url);
+        if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
       }
     };//加载js
-    let loadCss=function(_url,_callback){
-      let thisDir=_url.split("|")[0].replace(/\/css\//,"/css"+min+"/");
-      let fileName=thisDir.indexOf(".css")>0 ? thisDir.replace(".css","")+min : thisDir+min;
-      let url=thisDir.indexOf(".css")>0 ? thisDir.replace(".css",(min+".css"))+"?v="+cacheVersion : thisDir+min+".css?v="+cacheVersion;
-      if(_url.indexOf("http://")!==0){
-        let xhr,cacheKey=fileName.replace(/\./g,'_');
-        let css=getCache(cacheKey);
-        let thisCacheVersion=getCache(cacheKey+"_cacheVersion");
-        if(css===null||thisCacheVersion!==cacheVersion){
-          if(window.XMLHttpRequest){
-            xhr=new XMLHttpRequest();
-          }
-          else if(window.ActiveXObject){
-            xhr=new ActiveXObject("Microsoft.XMLHTTP");
-          }
-          if(typeof (xhr)!=="undefined"){
-            xhr.open("GET",url);
-            xhr.send(null);
-            xhr.onreadystatechange=function(){
-              if(Number(xhr.readyState)===4&&Number(xhr.status)===200){
-                css=xhr.responseText;
-                css=css===null ? "" : css;
-                css=css.replace(/\[dataDir]/g,dataDir); //css文件的动态路径需单独处理
-                css=css.replace(/\[v]/g,mediaCacheVersion);
-                setCache(cacheKey,css);
-                setCache(cacheKey+"_cacheVersion",cacheVersion);
-                mediaLength++;//增加一次资源加载次数
-                if(typeof (_callback)==="function") _callback();
-              }
-            };
-          }
+    let loadCss=function(_module,_callback){
+      if(isLink(_module)){
+        linkCss(_module);
+        if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
+        return false;
+      }
+      let url=getUrl(_module,"css")+"?v="+cacheVersion;//.js不一定是最后的字符
+      let cacheKey=getCacheKey(_module,"css");
+      let xhr;
+      let css=getCache(cacheKey);
+      let thisCacheVersion=getCache(cacheKey+"_version");
+      if(css===null||thisCacheVersion!==cacheVersion){
+        if(window.XMLHttpRequest){
+          xhr=new XMLHttpRequest();
         }
-        else{
-          if(typeof (_callback)==="function"){
-            _callback(); //回调，执行下一个引用  
-          }
+        else if(window.ActiveXObject){
+          xhr=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        if(typeof (xhr)!=="undefined"){
+          xhr.open("GET",url);
+          xhr.send(null);
+          xhr.onreadystatechange=function(){
+            if(Number(xhr.readyState)===4&&Number(xhr.status)===200){
+              css=xhr.responseText;
+              css=css===null ? "" : css;
+              css=css.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
+              css=css.replace(/\[v]/g,mediaCacheVersion);
+              setCache(cacheKey,css);
+              setCache(cacheKey+"_version",cacheVersion);
+              mediaLength++;//增加一次资源加载次数
+              if(typeof (_callback)==="function") _callback();
+            }
+          };
         }
       }
       else{
-        linkCss(_url.indexOf("http://")!==0 ? url : _url);
+        if(typeof (_callback)==="function"){
+          _callback(); //回调，执行下一个引用  
+        }
       }
     };//加载css
     let writeJs=function(_url,_text){
-      if(document.getElementsByTagName('HEAD').length===0) return false;
+      if(document.getElementsByTagName('HEAD').length===0) requestAnimationFrame(writeJs);
+      if(min!==""){
+        eval(_text);//隐藏代码
+        return false;
+      }
       let head=document.getElementsByTagName('HEAD').item(0);
       let thisTag=document.createElement("script");
       setAttribute(thisTag,_url.split("|").splice(1));//用于js标签自定义属性，例如_url=?id=888|data-value=999这类的属性定义
@@ -144,10 +153,13 @@ let headLoader,headUnLoad;
     let writeCss=function(_url,_text){
       if(document.getElementsByTagName('HEAD').length===0) return false;
       let head=document.getElementsByTagName('HEAD').item(0);
-      let thisTag=document.getElementsByTagName('style').item(0);
-      if(thisTag){
-        thisTag.innerHTML+=_text;
-        return false;
+      let thisTag;
+      if(that.multiLoad){
+        thisTag=document.getElementsByTagName('style').item(0);
+        if(thisTag){
+          thisTag.innerHTML+=_text;
+          return false;
+        }
       }
       thisTag=document.createElement("style");
       setAttribute(thisTag,_url.split("|").splice(1));
@@ -177,36 +189,33 @@ let headLoader,headUnLoad;
       thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?"+cacheVersion;
       head.appendChild(thisTag);
     };//往页面引入css
-    let writeThese=function(_thisDir,_modules,_fileType){
-      let thisDir=_thisDir.split("|")[0];
-      if(_fileType==="JS") thisDir=thisDir.replace(/\/js\//,"/js"+min+"/");
-      if(_fileType==="CSS") thisDir=thisDir.replace(/\/css\//,"/css"+min+"/");
+    let writeThese=function(_modules,_fileType){//_fileType为小写
       let cacheKey;
       let writeCode={
         "JS":writeJs,
         "CSS":writeCss
-      }[_fileType];
+      }[_fileType.toUpperCase()];
       let code=_modules.map((_k)=>{
-        cacheKey=(thisDir+_k.replace(/(\.js)|(\.css)/g,"")+min).replace(/\./g,'_');
+        cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min).replace(/\./g,'_');
         return getCache(cacheKey);
-      }).join(_fileType==='JS' ? ';' : ' ');
-      writeCode(_fileType+'_'+cacheVersion,code);
+      }).join(_fileType==='js' ? ';' : ' ');
+      writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+cacheVersion,code);
     };
-    let loadCount=function(){
+    let showLoadCount=function(){
       let thisDuration=new Date().getTime()-startTime;
       _global.headLoaderHistory=typeof (_global.headLoaderHistory)!=="undefined" ? _global.headLoaderHistory : [];//用于统计当前框架共加载文件的总时长
-      if(mediaLength>0) _global.headLoaderHistory=_global.headLoaderHistory.concat(new Array(mediaLength-1).fill(0),thisDuration);
-      if(typeof _global.loadCountTimeout!=="undefined") clearTimeout(_global.loadCountTimeout);
-      _global.loadCountTimeout=setTimeout(()=>{
-        let durationCount=0,avg=thisDuration;//有效加载历史的总时间
+      if(typeof _global.showLoadCountTimeout!=="undefined") clearTimeout(_global.showLoadCountTimeout);
+      _global.showLoadCountTimeout=setTimeout(()=>{
+        if(mediaLength>0) _global.headLoaderHistory=_global.headLoaderHistory.concat(new Array(mediaLength-1).fill(0),thisDuration);
+        let durationCount=0,avg=0;//有效加载历史的总时间
         if(_global.headLoaderHistory.length>0){
           durationCount=_global.headLoaderHistory.reduce((_v,_c)=>_v+_c);
           avg=Math.ceil(durationCount/_global.headLoaderHistory.length);
         }
-        console.log('headLoader当前页面'+(that.multiLoad ? "并行" : "串行")+'网络请求%c'+mediaLength+'个%cJS/CSS文件，程序用时%c'+thisDuration+'毫秒%c，累计网络请求%c'+_global.headLoaderHistory.length+'个%cJS/CSS文件，单文件平均程序用时%c'+avg+'毫秒','color:#1b8884','','color:#1b8884','','color:#1b8884','','color:#1b8884','');
+        console.log('当前页面使用headLoader'+(that.multiLoad ? "并行" : "串行")+'网络请求%c'+mediaLength+'个%cJS/CSS文件，程序用时%c'+thisDuration+'毫秒%c，累计网络请求%c'+_global.headLoaderHistory.length+'个%cJS/CSS文件，单文件平均用时%c'+avg+'毫秒','color:#1b8884','','color:#1b8884','','color:#1b8884','','color:#1b8884','');
       },3000);
     };
-    let loadThese=function(_thisDir,_modules,_fileType,_callback){
+    let loadThese=function(_modules,_fileType,_callback){
       if(document.getElementsByTagName('HEAD').length===0) return false;
       if(!_modules||_modules.length===0){
         if(typeof (_callback)==="function") _callback.call(false);
@@ -215,21 +224,20 @@ let headLoader,headUnLoad;
       let loadCode={
         "JS":loadJs,
         "CSS":loadCss
-      }[_fileType];
+      }[_fileType.toUpperCase()];
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appcacheVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
       let oneByOne=function(){
         let i=0;
         let runThis=function(){
           if(i>=_modules.length){
-            if(_modules&&i!==0){
-              writeThese(_thisDir,_modules,_fileType);
-            }
             if(typeof (_callback)==="function") _callback.call(false);
           }
           else{
-            let thisModule=_modules[i].indexOf("http://")===0||_modules[i].indexOf("https://")===0 ? _modules[i] : (_thisDir+_modules[i]);
-            i++;
-            loadCode(thisModule,runThis);
+            loadCode(_modules[i],()=>{
+              writeThese([_modules[i]],_fileType);
+              i++;
+              runThis();
+            });
           }
         };
         runThis();
@@ -239,17 +247,15 @@ let headLoader,headUnLoad;
           if(typeof (_callback)==="function") _callback.call(false);
           return false;
         }
-        let promises,thisModule;
-        promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(function(_resolve){
-          thisModule=_modules[i].indexOf("http://")===0||_modules[i].indexOf("https://")===0 ? _modules[i] : (_thisDir+_modules[i]);
-          loadCode(thisModule,()=>_resolve("success"));
+        let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(function(_resolve){
+          loadCode(_modules[i],()=>_resolve("success"));
         }));
         Promise.all(promises).then(()=>{
-          if(_modules.length!==0) writeThese(_thisDir,_modules,_fileType);
+          if(_modules.length!==0) writeThese(_modules,_fileType);
           if(typeof (_callback)==="function") _callback.call(false);
         });
       };//并行
-      (that.multiLoad ? promiseAll : oneByOne)();
+      (that.multiLoad ? promiseAll : oneByOne)();//线上并行，线下串行（可调试）
     };//加载
     this.run=function(){
       that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
@@ -257,23 +263,12 @@ let headLoader,headUnLoad;
       cacheVersion=getCacheVersion();
       mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
       let loadAllCallback=function(){
-        loadCount();
+        if(that.showLoadCount) showLoadCount();
         if(typeof (that.callback)==="function") that.callback.call(false);
       };
-      let loadCssCallback=function(){ loadThese(that.dataDir+"js/",that.dataJs,"JS",loadAllCallback);};
-      loadThese(that.dataDir+"css/",that.dataCss,"CSS",loadCssCallback);//先加载dataCss，后加载dataJs
+      let loadCssCallback=function(){ loadThese(that.dataJs,"js",loadAllCallback);};
+      loadThese(that.dataCss,"css",loadCssCallback);//先加载dataCss，后加载dataJs
     };
-  };
-  headUnLoad=function(){
-    if(document.readyState!=="complete"){
-      window.requestAnimationFrame(headUnLoad);
-      return false;
-    }
-    let thisScript=document.getElementsByTagName("script").item(0);
-    if(thisScript){
-      thisScript.remove();
-      headUnLoad();
-    }
   };
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
   let allScript=document.getElementsByTagName("script");
@@ -325,6 +320,7 @@ let headLoader,headUnLoad;
   else{
     if(reLog) console.log('%c友情提示:script标签无"data-js"属性',"color:#69F;");
   }
+  if(allScript.length>0&&min!=="") allScript.item(0).remove(); //线上环境隐藏headLoader.js
   let thisLoader=new headLoader();
   if(dataDir) thisLoader.dataDir=dataDir;
   thisLoader.dataCss=dataCss;
