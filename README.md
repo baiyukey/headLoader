@@ -1,7 +1,7 @@
 欢迎您使用headLoader
 ===
 ##插件简介<br>
-    headLoader用于加载css及js文档,当前版本为v0.31.00,他有如下特点:<br>
+    headLoader用于加载css及js文档,当前版本为1.0.1,他有如下特点:<br>
     1.可以实现一个script标签加载页面所需的全部css及js文档;<br>
     2.对加载文档进行缓存可控化,每两个小时更新一次(需要设置参数),防止版本迭代时不能及时更新页面;<br>
     3.当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,减少页面载入时的闪烁;<br>
@@ -10,6 +10,7 @@
     6.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本.<br>
     7.外网并行加载文档加快速度,内网串行加载利于观察程序运行.<br>
     8.外网程序在内存中运行便于保护代码,内网正常在页面中运行方便调试与定位.<br>
+    9.可用于页面资源预加载.<br>
 ##使用方法(任选其一)<br>
     1.标签属性定义法(推荐):<br>
       <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.elfAlert,_js" src="/media/user/js.min/libs/headLoader.min.js"></script>
@@ -21,6 +22,7 @@
           loader.dataDir="/media/user/";
           loader.dataCss=['public/global','public/color','other','_css'];
           loader.dataJs=['libs/jquery-1.8.0','libs/jquery.elfAlert','_js'];
+          loader.writeDocument=1;
           loader.callBack=function(){console.log("headLoader is done!")};   //外部命令法可以定义回调函数
           loader.run();
       </script>
@@ -30,6 +32,7 @@
             dataDir:"/media/users/",
             dataCss:['public/global','public/color','other','_css'],
             dataJs:['libs/jquery-1.8.0','libs/jquery.elfAlert','_js'],
+            writeDocument:1,
             callBack:function(){console.log("headLoader is done!")}   //外部命令法可以定义回调函数
           });
           loader.run();
@@ -43,7 +46,8 @@
         data-dir  相当于 dataDir<br>
         data-css 相当于 dataCss<br>
         data-js    相当于 dataJs<br>
-    6.命令行语句法可以定义回调函数,标签属性定义法不支持定义回调函数<br>
+    6.如果想预加载资源以备后面的页面使用时，可以设置writeDocument参数为0，0为只做缓存，1为缓存并写入HTML，默认为1<br>
+    7.命令行语句法可以定义回调函数,标签属性定义法不支持定义回调函数<br>
 ##注意事项<br>
     1.由于本插件需要使用localStorage功能,所以必须是现代浏览器或者IE10以上版本才可以成功运行;<br>
     2.css模块的路径在基础路径下的"css"目录中,js模块的路径在基础路径下的"js"目录中;<br>
@@ -57,5 +61,5 @@
     10.当模块为完整的http地址时,例如loader.dataJs=['http://dwz.cn/headLoader'],将直接创建标签并加载,不进行任何处理,当然也就没有了缓存管理机制.
 ##更多...<br>
       http://www.uielf.com/headLoader/<br>
-      作者:龙马印<br>
+      作者:宇哥<br>
       联系方式:baiyukey@qq.com<br>
