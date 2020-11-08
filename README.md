@@ -13,21 +13,26 @@
     9.可用于页面资源预加载.<br>
 ##快速上手<br>
     普通页面加载资源方法:<br>
-    <script type="text/javascript" src="/a.js"></script><br>
-    <script type="text/javascript" src="/b.js"></script><br>
-    <script type="text/javascript" src="/c.js"></script><br>
-    <script type="text/javascript" src="/d.js"></script><br>
-    <link rel="stylesheet" href="/a.css" type="text/css"><br>
-    <link rel="stylesheet" href="/b.css" type="text/css"><br>
-    <link rel="stylesheet" href="/c.css" type="text/css"><br>
     
-    现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器
-    <script type="text/javascript" data-dir="/" data-js="a,b,c,d" data-css="a,b,c" src="/headLoader.min.js"></script>
+      <script type="text/javascript" src="/a.js"></script><br>
+      <script type="text/javascript" src="/b.js"></script><br>
+      <script type="text/javascript" src="/c.js"></script><br>
+      <script type="text/javascript" src="/d.js"></script><br>
+      <link rel="stylesheet" href="/a.css" type="text/css"><br>
+      <link rel="stylesheet" href="/b.css" type="text/css"><br>
+      <link rel="stylesheet" href="/c.css" type="text/css"><br>
+    
+   现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器<br>
+   
+      <script type="text/javascript" data-dir="/" data-js="a,b,c,d" data-css="a,b,c" src="/headLoader.min.js"></script>
+      
 ##使用方法(任选其一)<br>
-    1.标签属性定义法(推荐):<br>
+   1.标签属性定义法(推荐):<br>
+    
       <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.elfAlert,_js" src="/media/user/js.min/libs/headLoader.min.js"></script>
         
-    2.命令行语句法:
+   2.命令行语句法:
+    
       <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
       <script type="text/javascript">
           var loader=new headLoader();
@@ -38,7 +43,9 @@
           loader.callBack=function(){console.log("headLoader is done!")};   //外部命令法可以定义回调函数
           loader.run();
       </script>
-    当然,您也可以写成这样:
+      
+   当然,您也可以写成这样:
+   
       <script type="text/javascript">
           var loader=new headLoader({
             dataDir:"/media/users/",
@@ -49,6 +56,7 @@
           });
           loader.run();
       </script>
+      
 ##使用说明<br>
     1.在页面的合适位置插入javascript标签<br>
     2.javascript标签的"data-dir"属性定义模块的基础路径(*可选)[默认值:'./'];<br>
