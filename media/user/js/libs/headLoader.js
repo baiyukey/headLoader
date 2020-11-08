@@ -1,9 +1,16 @@
 ﻿/**
- * headLoader用于加载页面资源及管理css, js缓存，使页面加载实现快速响应，节省网络流量，降低服务器压力的目的。
+ * headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。
  * @global : headLoader
  * @author: 宇哥 baiyukey@qq.com
+ * @param {String} [this.dataDir] -资源路径
+ * @param {Array} [this.dataCss] -CSS模块列表
+ * @param {Array} [this.dataJs] -JS资源路径
+ * @param {Number} [this.dataLifecycle] -缓存生成周期，单位小时，默认2
+ * @param {Boolean} [this.dataElfFrame] -是否在elfFrame框架下
+ * @param {Function} [this.callback] -所有资源加载完成后的回调函数
+ * @param {Boolean} [this.showLoadCount] -是否显示加载统计
  * @link : https://github.com/baiyukey/headLoader
- * @version : 1.0.1
+ * @version : 1.0.2
  * @copyright : http://www.uielf.com
  */
 let headLoader;
@@ -14,7 +21,9 @@ let headLoader;
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
-    this.callback=val.callback || null;//加载完成后的回调
+    this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认2 | 可选项
+    this.dataElfFrame=val.dataElfFrame || dataElfFrame; //Boolean | 是否在elfFrame框架下，是的话会根据线上或线下自动切换代码路径，默认false | 可选项
+    this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLoadCount=val.showLoadCount || false;//默认不显示加载统计
     this.writeDocument=typeof (val.writeDocument)!=="undefined" ? this.writeDocument : 1;//0为只缓存，1为写入HTML同时缓存(默认)
@@ -83,7 +92,8 @@ let headLoader;
       })(thisHex.encode(_cacheKey));
     };
     let getUrl=function(_module,_type){
-      return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min)+"."+_type;//.js不一定是最后的字符
+      if(that.dataElfFrame) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace(`.${_type}`,``)+min)+"."+_type;//.js不一定是最后的字符
+      return `${that.dataDir}${_module.split("|")[0]}.${_type}`;
     };
     let getCacheKey=function(_module,_type){
       return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min).replace(/\./g,'_');
@@ -214,7 +224,6 @@ let headLoader;
       setAttribute(thisTag,_url.split("|").splice(1));
       thisTag.type="text/css";
       thisTag.rel="stylesheet";
-      thisTag.rev="stylesheet";
       thisTag.media="screen";
       thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?"+cacheVersion;
       head.appendChild(thisTag);
@@ -291,7 +300,7 @@ let headLoader;
     this.run=function(){
       that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
       that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
-      cacheVersion=getCacheVersion();
+      cacheVersion=getCacheVersion(dataLifecycle);
       mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
       let loadAllCallback=function(){
         if(that.showLoadCount) showLoadCount();
@@ -307,7 +316,8 @@ let headLoader;
   let dataJs=[],
     dataCss=[];
   let dataDir;
-  let update=false;
+  let dataElfFrame=false;//默认不是elfFrame环境，在elfFrame环境下会自动切换线上与线下代码路径
+  let dataLifecycle=2;//缓存周期默认为2个小时
   let cacheVersion="";//每项缓存文件的缓存版本
   let mediaCacheVersion="";//css文件中的静态文件的缓存版本
   let mediaLength=0;//文件个数，用于统计页面加载多少个文件
@@ -322,40 +332,47 @@ let headLoader;
     if(console.log) console.log("%c"+decodeURIComponent(atob("JUU5JTk0JTk5JUU4JUFGJUFGJUU2JThGJTkwJUU3JUE0JUJBJTNBJUU3JUE4JThCJUU1JUJBJThGJUU2JTlDJUFBJUU2JTg4JTkwJUU1JThBJTlGJUU2JTg5JUE3JUU4JUExJThDJTJDJUU2JThGJTkyJUU0JUJCJUI2JUU1JTkwJThEJUU3JUE3JUIwJUU0JUI4JUJBaGVhZExvYWRlci5qcyVFNiU4OCU5NiVFOCU4MCU4NWhlYWRMb2FkZXIubWluLmpzJUU2JUIzJUE4JUU2JTg0JThGJUU1JUE0JUE3JUU1JUIwJThGJUU1JTg2JTk5LiVFNSVBNiU4MiVFNiU5QyU4OSVFNyU5NiU5MSVFOSU5NyVBRSVFOCVBRiVCNyVFOCVBRSVCRiVFOSU5NyVBRSUzQWh0dHBzJTNBJTJGJTJGZ2l0aHViLmNvbSUyRmJhaXl1a2V5JTJGaGVhZExvYWRlcg==")),"color:#F00");
     return false;
   }
-  let reLog=console.log && thisScript.getAttribute("src").indexOf(".min")<0;
+  let reLog=console.log && min!==".min";
   let staticDir=location.pathname.split("/")[1]==="static" ? "/static" : "/";
   let modDir=location.pathname.replace(staticDir,"").replace(".html","");
   if(location.pathname.replace(/.*\//,"").replace(".html","")==="") modDir+="index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
-  if(thisScript.hasAttribute("data-update-cacheVersion")){
-    update=thisScript.getAttribute("data-update-cacheVersion");
+  if(thisScript.hasAttribute("data-elfFrame")){
+    dataElfFrame=["true",""].includes(thisScript.getAttribute("data-elfFrame"));
   }
   else{
-    if(reLog) console.log('%c友情提示:script标签无"data-update-cacheVersion"属性,默认为false.',"color:#69F;");
+    if(reLog) console.log(`%c友情提示:script标签未设置"data-elfFrame"属性,默认为false.`,"color:#69F;");
+  }
+  if(thisScript.hasAttribute("data-lifecycle")){
+    dataLifecycle=Number(thisScript.getAttribute("data-lifecycle"));
+  }
+  else{
+    if(reLog) console.log(`%c友情提示:script标签未设置"data-lifecycle"属性,默认为${dataLifecycle}小时.`,"color:#69F;");
   }
   if(thisScript.hasAttribute("data-dir")){
     dataDir=thisScript.getAttribute("data-dir");
   }
   else{
-    if(reLog) console.log('%c友情提示:script标签无"data-dir"属性.',"color:#69F;");
+    if(reLog) console.log('%c友情提示:script标签未设置"data-dir"属性.',"color:#69F;");
   }
   if(thisScript.hasAttribute("data-css")){
     dataCss=thisScript.getAttribute("data-css").split(",");//.replace(/_css/g,modDir);
   }
   else{
-    if(reLog) console.log('%c友情提示:script标签无"data-css"属性',"color:#69F;");
+    if(reLog) console.log('%c友情提示:script标签未设置"data-css"属性',"color:#69F;");
   }
   if(thisScript.hasAttribute("data-js")){
     dataJs=thisScript.getAttribute("data-js").split(",");//.replace(/_js/g,modDir);
   }
   else{
-    if(reLog) console.log('%c友情提示:script标签无"data-js"属性',"color:#69F;");
+    if(reLog) console.log('%c友情提示:script标签未设置"data-js"属性',"color:#69F;");
   }
   if(allScript.length>0 && min!=="") allScript.item(0).remove(); //线上环境隐藏headLoader.js
   let thisLoader=new headLoader();
   if(dataDir) thisLoader.dataDir=dataDir;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
+  thisLoader.dataLifecycle=dataLifecycle;
   //thisLoader.showLoadCount=true;//是否显示统计
   thisLoader.run();
 })(window.location.origin===window.top.location.origin ? window.top : window);
