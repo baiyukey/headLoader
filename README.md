@@ -14,13 +14,13 @@
 ##快速上手<br>
     普通页面加载资源方法:<br>
     
-      <script type="text/javascript" src="/a.js"></script><br>
-      <script type="text/javascript" src="/b.js"></script><br>
-      <script type="text/javascript" src="/c.js"></script><br>
-      <script type="text/javascript" src="/d.js"></script><br>
-      <link rel="stylesheet" href="/a.css" type="text/css"><br>
-      <link rel="stylesheet" href="/b.css" type="text/css"><br>
-      <link rel="stylesheet" href="/c.css" type="text/css"><br>
+      <script type="text/javascript" src="/a.js"></script>
+      <script type="text/javascript" src="/b.js"></script>
+      <script type="text/javascript" src="/c.js"></script>
+      <script type="text/javascript" src="/d.js"></script>
+      <link rel="stylesheet" href="/a.css" type="text/css">
+      <link rel="stylesheet" href="/b.css" type="text/css">
+      <link rel="stylesheet" href="/c.css" type="text/css">
     
    现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器<br>
    
