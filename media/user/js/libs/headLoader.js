@@ -8,9 +8,9 @@
  * @param {Number} [this.dataLifecycle] -缓存生成周期，单位小时，默认2
  * @param {Boolean} [this.dataElfFrame] -是否在elfFrame框架下
  * @param {Function} [this.callback] -所有资源加载完成后的回调函数
- * @param {Boolean} [this.showLoadCount] -是否显示加载统计
+ * @param {Boolean} [this.showLog] -是否显示加载统计
  * @link : https://github.com/baiyukey/headLoader
- * @version : 1.0.2
+ * @version : 1.0.3
  * @copyright : http://www.uielf.com
  */
 let headLoader;
@@ -25,7 +25,7 @@ let headLoader;
     this.dataElfFrame=val.dataElfFrame || dataElfFrame; //Boolean | 是否在elfFrame框架下，是的话会根据线上或线下自动切换代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
-    this.showLoadCount=val.showLoadCount || false;//默认不显示加载统计
+    this.showLog=val.showLog || false;//默认不显示加载统计
     this.writeDocument=typeof (val.writeDocument)!=="undefined" ? this.writeDocument : 1;//0为只缓存，1为写入HTML同时缓存(默认)
     let that=this;//关键字避嫌
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
@@ -240,11 +240,11 @@ let headLoader;
       }).join(_fileType==='js' ? ';' : ' ');
       writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+cacheVersion,code);
     };
-    let showLoadCount=function(){
+    let showLog=function(){
       let thisDuration=new Date().getTime()-startTime;
       _global.headLoaderHistory=typeof (_global.headLoaderHistory)!=="undefined" ? _global.headLoaderHistory : [];//用于统计当前框架共加载文件的总时长
-      if(typeof _global.showLoadCountTimeout!=="undefined") clearTimeout(_global.showLoadCountTimeout);
-      _global.showLoadCountTimeout=setTimeout(()=>{
+      if(typeof _global.showLogTimeout!=="undefined") clearTimeout(_global.showLogTimeout);
+      _global.showLogTimeout=setTimeout(()=>{
         if(mediaLength>0) _global.headLoaderHistory=_global.headLoaderHistory.concat(new Array(mediaLength-1).fill(0),thisDuration);
         let durationCount=0,avg=0;//有效加载历史的总时间
         if(_global.headLoaderHistory.length>0){
@@ -303,7 +303,7 @@ let headLoader;
       cacheVersion=getCacheVersion(dataLifecycle);
       mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
       let loadAllCallback=function(){
-        if(that.showLoadCount) showLoadCount();
+        if(that.showLog) showLog();
         if(typeof (that.callback)==="function") that.callback.call(false);
       };
       let loadCssCallback=function(){ loadThese(that.dataJs,"js",loadAllCallback);};
@@ -373,6 +373,6 @@ let headLoader;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.dataLifecycle=dataLifecycle;
-  //thisLoader.showLoadCount=true;//是否显示统计
+  //thisLoader.showLog=true;//是否显示统计
   thisLoader.run();
 })(window.location.origin===window.top.location.origin ? window.top : window);
