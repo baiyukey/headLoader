@@ -6,11 +6,12 @@
  * @param {Array} [this.dataCss] -CSS模块列表
  * @param {Array} [this.dataJs] -JS资源路径
  * @param {Number} [this.dataLifecycle] -缓存生成周期，单位小时，默认2
+ * @param {Number} [this.preload] -预加载开关 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @param {Boolean} [this.dataElfFrame] -是否在elfFrame框架下
  * @param {Function} [this.callback] -所有资源加载完成后的回调函数
  * @param {Boolean} [this.showLog] -是否显示加载统计
  * @link : https://github.com/baiyukey/headLoader
- * @version : 1.0.3
+ * @version : 1.0.4
  * @copyright : http://www.uielf.com
  */
 let headLoader;
@@ -26,7 +27,7 @@ let headLoader;
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
-    this.writeDocument=typeof (val.writeDocument)!=="undefined" ? this.writeDocument : 1;//0为只缓存，1为写入HTML同时缓存(默认)
+    this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
     let that=this;//关键字避嫌
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
     let getCacheVersion=function(_hours){
@@ -273,7 +274,7 @@ let headLoader;
           }
           else{
             loadCode(_modules[i],()=>{
-              if(that.writeDocument===1) writeThese([_modules[i]],_fileType);
+              if(that.preload===0) writeThese([_modules[i]],_fileType);
               i++;
               runThis();
             });
@@ -290,7 +291,7 @@ let headLoader;
           loadCode(_modules[i],()=>_resolve("success"));
         }));
         Promise.all(promises).then(()=>{
-          if(_modules.length!==0 && that.writeDocument===1) writeThese(_modules,_fileType);
+          if(_modules.length!==0 && that.preload===0) writeThese(_modules,_fileType);
           if(typeof (_callback)==="function") _callback.call(false);
         });
       };//并行
