@@ -5,13 +5,13 @@
  * @param {String} [this.dataDir] -资源路径
  * @param {Array} [this.dataCss] -CSS模块列表
  * @param {Array} [this.dataJs] -JS资源路径
- * @param {Number} [this.dataLifecycle] -缓存生成周期，单位小时，默认2
- * @param {Number} [this.preload] -预加载开关 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
- * @param {Boolean} [this.dataElfFrame] -是否在elfFrame框架下
- * @param {Function} [this.callback] -所有资源加载完成后的回调函数
- * @param {Boolean} [this.showLog] -是否显示加载统计
+ * @param {Number} [this.dataLifecycle=2] -缓存生成周期，单位小时，默认2
+ * @param {Boolean} [this.dataActive=false] -是否自动切换线上与线下代码路径，默认否
+ * @param {Function} [this.callback=null] -所有资源加载完成后的回调函数 (仅命令行模式可用)
+ * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
+ * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 1.0.4
+ * @version : 1.1.0
  * @copyright : http://www.uielf.com
  */
 let headLoader;
@@ -23,7 +23,7 @@ let headLoader;
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
     this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认2 | 可选项
-    this.dataElfFrame=val.dataElfFrame || dataElfFrame; //Boolean | 是否在elfFrame框架下，是的话会根据线上或线下自动切换代码路径，默认false | 可选项
+    this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
@@ -93,7 +93,7 @@ let headLoader;
       })(thisHex.encode(_cacheKey));
     };
     let getUrl=function(_module,_type){
-      if(that.dataElfFrame) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace(`.${_type}`,``)+min)+"."+_type;//.js不一定是最后的字符
+      if(that.dataActive) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace(`.${_type}`,``)+min)+"."+_type;//.js不一定是最后的字符
       return `${that.dataDir}${_module.split("|")[0]}.${_type}`;
     };
     let getCacheKey=function(_module,_type){
@@ -317,7 +317,7 @@ let headLoader;
   let dataJs=[],
     dataCss=[];
   let dataDir;
-  let dataElfFrame=false;//默认不是elfFrame环境，在elfFrame环境下会自动切换线上与线下代码路径
+  let dataActive=false;//是否自动切换线上与线下代码路径，默认否
   let dataLifecycle=2;//缓存周期默认为2个小时
   let cacheVersion="";//每项缓存文件的缓存版本
   let mediaCacheVersion="";//css文件中的静态文件的缓存版本
@@ -338,11 +338,11 @@ let headLoader;
   let modDir=location.pathname.replace(staticDir,"").replace(".html","");
   if(location.pathname.replace(/.*\//,"").replace(".html","")==="") modDir+="index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
-  if(thisScript.hasAttribute("data-elfFrame")){
-    dataElfFrame=["true",""].includes(thisScript.getAttribute("data-elfFrame"));
+  if(thisScript.hasAttribute("data-active")){
+    dataActive=["true",""].includes(thisScript.getAttribute("data-active"));
   }
   else{
-    if(reLog) console.log(`%c友情提示:script标签未设置"data-elfFrame"属性,默认为false.`,"color:#69F;");
+    if(reLog) console.log(`%c友情提示:script标签未设置"data-active"属性,默认为false.`,"color:#69F;");
   }
   if(thisScript.hasAttribute("data-lifecycle")){
     dataLifecycle=Number(thisScript.getAttribute("data-lifecycle"));
