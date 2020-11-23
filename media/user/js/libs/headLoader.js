@@ -11,10 +11,136 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 1.1.0
+ * @version : 2.0.0
  * @copyright : http://www.uielf.com
  */
 let headLoader;
+/**
+ * 通过indexedDB创建本地数据库
+ * @param {String} [_option.database] 数据库名称
+ * @param {Function} [_option.getVersion] 获取动态数据版本号，版本号变更后数据将无效
+ * @param {Object} [_option.tables] 表及字段名称,例如{js:["key","value","version"],...}
+ */
+let LocalDB=function(_option){
+  let idb=null;
+  //idb的状态 0:关闭，1:打开
+  let status=0;
+  const dbAble=function(){
+    if(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB) return true;
+    console.log("您的浏览器不支持indexedDB，请使用现代浏览器，例如chrome,firefox等.");
+    return false;
+  };
+  const openDB=function(){
+    return new Promise((_resolve,_reject)=>{
+      if(status===1 && typeof (_resolve)!=="undefined") _resolve("success");
+      let request=indexedDB.open(_option.database); //建立打开 IndexedDB
+      request.onerror=function(_e){
+        _reject(_e);
+      };
+      request.onsuccess=function(_e){
+        idb=request.result;
+        status=1;
+        _resolve(_e);
+      };
+      //createTable不能放到onsuccess中，否则会出错。
+      return request.onupgradeneeded=function(_e){
+        idb=_e.target.result;
+        let tableNames=Object.keys(_option.tables);
+        let createColumn=function(_i){
+          if(!idb.objectStoreNames.contains(tableNames[_i])){
+            //创建表，声明主键字段名为key
+            let objectStore=idb.createObjectStore(tableNames[_i],{keyPath:"key"});
+            //非关系型数据库的特点，表中的每个字段存为一个子表，美其名曰“索引”(createIndex)
+            //在往子表里加数据时只需增加到Value字段,所以Key字段的值引用Value中的某个属性值即可，也可以让它自动生成
+            //3个参数：子表名称，Key字段的值引用Value字段的哪个属性，Key字段的值是否唯一
+            _option.tables[tableNames[_i]].forEach(_c=>objectStore.createIndex(_c,"key",{unique:true}));
+            if(_i<tableNames.length-1){
+              createColumn(_i+1);
+            }
+            else{
+              _resolve(idb);
+            }
+          }
+        };
+        createColumn(0);
+      };
+    });
+  };
+  const closeDB=async function(){
+    if(status===0) return;
+    if(idb) idb.close();
+    console.log(`数据库${_option.database}已关闭`);
+    return status=0;
+  };
+  const deleteDB=async function(){
+    if(!idb) return console.warn(`目前还没有数库${_option.database}`);
+    await closeDB();
+    indexedDB.deleteDatabase(_option.database);
+    idb=null;
+    console.log(`数据库${_option.database}已删除`);
+  };
+  /**
+   * 定义某条数据
+   * @param {String} [_tableName] -表名
+   * @param {String} [_keyName] -键名
+   * @param {...} [_value] -键值
+   * @return new Promise()
+   */
+  const setItem=async function(_tableName,_keyName,_value){
+    //如果数据已存在，覆盖原有数据，否则写入
+    return new Promise((_resolve,_reject)=>{
+      let thisTable=idb.transaction(_tableName,"readwrite").objectStore(_tableName);
+      let thisData={
+        key:_keyName,
+        value:_value,
+        version:_option.getVersion()
+      };
+      let getMethod=function(__resolve,__reject){
+        let thisKey=thisTable.index("key").get(_keyName);
+        thisKey.onsuccess=(_e)=>{
+          __resolve(_e.target.result ? "put" : "add");
+        };
+        thisKey.onerror=()=>__resolve("add");
+      };
+      new Promise(getMethod).then((_method)=>{
+        let setData=thisTable[_method](thisData);
+        setData.onsuccess=function(){
+          //console.log(`${_keyName}数据${_method==="add" ? "写入" : "更新"}成功`);
+          _resolve("success");
+        };
+        setData.onerror=function(_e){
+          _reject(_e);
+        };
+      });
+    });
+  };
+  /**
+   * 获取某条数据
+   * @param {String} [_tableName] -表名
+   * @param {String} [_keyName] -键名
+   * @return new Promise()
+   */
+  const getItem=function(_tableName,_keyName){
+    return new Promise((_resolve,_reject)=>{
+      let table=idb.transaction(_tableName,'readonly').objectStore(_tableName);
+      let list=table.index('key');
+      let request=list.get(_keyName);
+      request.onsuccess=function(_e){
+        _resolve(request.result);
+      };
+      request.onerror=function(_e){
+        _reject(_e);
+      };
+    });
+  };
+  if(dbAble){
+    this.open=openDB;
+    this.close=closeDB;
+    this.delete=deleteDB;
+    this.setItem=setItem;
+    this.getItem=getItem;
+  }
+};
 (function(_global){
   let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   headLoader=function(_val){
@@ -81,16 +207,7 @@ let headLoader;
       };
     };
     let setCache=function(_cacheKey,_value){
-      ((_k,_v)=>{
-        _global["headLoaderCache"][_k]=_v;
-        _global.localStorage.setItem(_k,_v);
-      })(thisHex.encode(_cacheKey),_value);
-    };
-    let getCache=function(_cacheKey){
-      return ((_k)=>{
-        if(!_global["headLoaderCache"][_k]) _global["headLoaderCache"][_k]=_global.localStorage.getItem(_k);
-        return _global["headLoaderCache"][_k];  //没有时返回null，如果有值返回""或字符串
-      })(thisHex.encode(_cacheKey));
+      thisDB.setItem("data",thisHex.encode(_cacheKey),_value).then(null);
     };
     let getUrl=function(_module,_type){
       if(that.dataActive) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace(`.${_type}`,``)+min)+"."+_type;//.js不一定是最后的字符
@@ -107,34 +224,38 @@ let headLoader;
       }
       let url=getUrl(_module,"js")+"?v="+cacheVersion;//.js不一定是最后的字符
       let cacheKey=getCacheKey(_module,"js");
-      let xhr;
-      let js=getCache(cacheKey);
-      let thisCacheVersion=getCache(cacheKey+"_version");
-      if(js===null || thisCacheVersion!==cacheVersion){
-        if(window.XMLHttpRequest){
-          xhr=new XMLHttpRequest();
+      let runThis=function(_value){
+        let xhr;
+        let js=_value;
+        if(js===null){
+          if(window.XMLHttpRequest){
+            xhr=new XMLHttpRequest();
+          }
+          else if(window.ActiveXObject){
+            xhr=new ActiveXObject("Microsoft.XMLHTTP");
+          }
+          if(typeof (xhr)!=="undefined"){
+            xhr.open("GET",url);
+            xhr.send(null);
+            xhr.onreadystatechange=function(){
+              if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
+                js=xhr.responseText;
+                js=js===null ? "" : js;
+                setCache(cacheKey,js);
+                mediaLength++;//增加一次资源加载次数
+                if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
+              }
+            };
+          }
         }
-        else if(window.ActiveXObject){
-          xhr=new ActiveXObject("Microsoft.XMLHTTP");
+        else{
+          if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
         }
-        if(typeof (xhr)!=="undefined"){
-          xhr.open("GET",url);
-          xhr.send(null);
-          xhr.onreadystatechange=function(){
-            if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-              js=xhr.responseText;
-              js=js===null ? "" : js;
-              setCache(cacheKey,js);
-              setCache(cacheKey+"_version",cacheVersion);
-              mediaLength++;//增加一次资源加载次数
-              if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-            }
-          };
-        }
-      }
-      else{
-        if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-      }
+      };
+      //getCache(cacheKey).then(runThis);
+      thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+        runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
+      });
     };//加载js
     let loadCss=function(_module,_callback){
       if(isLink(_module)){
@@ -144,38 +265,42 @@ let headLoader;
       }
       let url=getUrl(_module,"css")+"?v="+cacheVersion;//.js不一定是最后的字符
       let cacheKey=getCacheKey(_module,"css");
-      let xhr;
-      let css=getCache(cacheKey);
-      let thisCacheVersion=getCache(cacheKey+"_version");
-      if(css===null || thisCacheVersion!==cacheVersion){
-        if(window.XMLHttpRequest){
-          xhr=new XMLHttpRequest();
+      let runThis=function(_value){
+        let xhr;
+        let css=_value;
+        if(css===null){
+          if(window.XMLHttpRequest){
+            xhr=new XMLHttpRequest();
+          }
+          else if(window.ActiveXObject){
+            xhr=new ActiveXObject("Microsoft.XMLHTTP");
+          }
+          if(typeof (xhr)!=="undefined"){
+            xhr.open("GET",url);
+            xhr.send(null);
+            xhr.onreadystatechange=function(){
+              if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
+                css=xhr.responseText;
+                css=css===null ? "" : css;
+                css=css.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
+                css=css.replace(/\[v]/g,mediaCacheVersion);
+                setCache(cacheKey,css);
+                mediaLength++;//增加一次资源加载次数
+                if(typeof (_callback)==="function") _callback();
+              }
+            };
+          }
         }
-        else if(window.ActiveXObject){
-          xhr=new ActiveXObject("Microsoft.XMLHTTP");
+        else{
+          if(typeof (_callback)==="function"){
+            _callback(); //回调，执行下一个引用
+          }
         }
-        if(typeof (xhr)!=="undefined"){
-          xhr.open("GET",url);
-          xhr.send(null);
-          xhr.onreadystatechange=function(){
-            if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-              css=xhr.responseText;
-              css=css===null ? "" : css;
-              css=css.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
-              css=css.replace(/\[v]/g,mediaCacheVersion);
-              setCache(cacheKey,css);
-              setCache(cacheKey+"_version",cacheVersion);
-              mediaLength++;//增加一次资源加载次数
-              if(typeof (_callback)==="function") _callback();
-            }
-          };
-        }
-      }
-      else{
-        if(typeof (_callback)==="function"){
-          _callback(); //回调，执行下一个引用
-        }
-      }
+      };
+      //getCache(cacheKey).then(runThis);
+      thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+        runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
+      });
     };//加载css
     let writeJs=function(_url,_text){
       //if(document.getElementsByTagName('HEAD').length===0) requestAnimationFrame(()=>writeJs(_url,_text));
@@ -229,17 +354,32 @@ let headLoader;
       thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?"+cacheVersion;
       head.appendChild(thisTag);
     };//往页面引入css
-    let writeThese=function(_modules,_fileType){//_fileType为小写
-      let cacheKey;
-      let writeCode={
-        "JS":writeJs,
-        "CSS":writeCss
-      }[_fileType.toUpperCase()];
-      let code=_modules.map((_k)=>{
-        cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min).replace(/\./g,'_');
-        return getCache(cacheKey);
-      }).join(_fileType==='js' ? ';' : ' ');
-      writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+cacheVersion,code);
+    let writeThese=async function(_modules,_fileType){//_fileType为小写
+      return new Promise((_resolve)=>{
+        let cacheKey;
+        let writeCode={
+          "JS":writeJs,
+          "CSS":writeCss
+        }[_fileType.toUpperCase()];
+        let code={};
+        let Promises=[];
+        _modules.forEach((_k)=>{
+          code[_k]=null;
+          let runThis=function(_resolve){
+            cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min).replace(/\./g,'_');
+            //getCache(cacheKey).then(_v=>code.push(_v));
+            thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+              code[_k]=_value.value;
+              _resolve(true);
+            });
+          };
+          Promises.push(new Promise(runThis));
+        });
+        Promise.all(Promises).then(()=>{
+          writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+cacheVersion,Object.values(code).join(_fileType==='js' ? ';' : ' '));
+          _resolve("success");
+        });
+      });
     };
     let showLog=function(){
       let thisDuration=new Date().getTime()-startTime;
@@ -273,8 +413,8 @@ let headLoader;
             if(typeof (_callback)==="function") _callback.call(false);
           }
           else{
-            loadCode(_modules[i],()=>{
-              if(that.preload===0) writeThese([_modules[i]],_fileType);
+            loadCode(_modules[i],async()=>{
+              if(that.preload===0) await writeThese([_modules[i]],_fileType);
               i++;
               runThis();
             });
@@ -290,25 +430,42 @@ let headLoader;
         let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(function(_resolve){
           loadCode(_modules[i],()=>_resolve("success"));
         }));
-        Promise.all(promises).then(()=>{
-          if(_modules.length!==0 && that.preload===0) writeThese(_modules,_fileType);
+        Promise.all(promises).then(async()=>{
+          if(_modules.length!==0 && that.preload===0) await writeThese(_modules,_fileType);
           if(typeof (_callback)==="function") _callback.call(false);
         });
       };//并行
       (that.multiLoad ? promiseAll : oneByOne)();//线上并行，线下串行（可调试）
     };//加载
     let thisHex=new hex();
+    let localDBOption={
+      database:"headLoaderDB",
+      tables:{
+        //        js:["key","value","version"],
+        //        css:["key","value","version"],
+        //        font:["key","value","version"],
+        //        icon:["key","value","version"],
+        //        image:["key","value","version"],
+        //        video:["key","value","version"],
+        data:["key","value","version"]
+      },
+      getVersion:getCacheVersion
+    };
+    let thisDB=new LocalDB(localDBOption);
     this.run=function(){
-      that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
-      that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
-      cacheVersion=getCacheVersion(dataLifecycle);
-      mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
-      let loadAllCallback=function(){
-        if(that.showLog) showLog();
-        if(typeof (that.callback)==="function") that.callback.call(false);
-      };
-      let loadCssCallback=function(){ loadThese(that.dataJs,"js",loadAllCallback);};
-      loadThese(that.dataCss,"css",loadCssCallback);//先加载dataCss，后加载dataJs
+      (async()=>{
+        await thisDB.open();
+        that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
+        that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
+        cacheVersion=getCacheVersion(dataLifecycle);
+        mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
+        let loadAllCallback=function(){
+          if(that.showLog) showLog();
+          if(typeof (that.callback)==="function") that.callback.call(false);
+        };
+        let loadCssCallback=function(){ loadThese(that.dataJs,"js",loadAllCallback);};
+        loadThese(that.dataCss,"css",loadCssCallback);//先加载dataCss，后加载dataJs
+      })();
     };
   };
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
@@ -334,8 +491,7 @@ let headLoader;
     return false;
   }
   let reLog=console.log && min!==".min";
-  let staticDir=location.pathname.split("/")[1]==="static" ? "/static" : "/";
-  let modDir=location.pathname.replace(staticDir,"").replace(".html","");
+  let modDir=location.pathname.replace(".html","");
   if(location.pathname.replace(/.*\//,"").replace(".html","")==="") modDir+="index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
   if(thisScript.hasAttribute("data-active")){

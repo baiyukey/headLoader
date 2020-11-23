@@ -1,19 +1,20 @@
 欢迎您使用headLoader
 ===
 ##插件简介<br>
-    headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。当前版本为1.1.0,他有如下特点:<br>
-    1.可实现一个script标签加载页面所需的全部css及js文档;
-    2.可实现资源预加载功能;
-    3.资源热加载，即随需随加载，而不需要刷新页面;
-    4.对加载文档进行缓存可控化,每两个小时更新一次(需要设置缓存生命周期参数),即能重用本地缓存又能保证代码的时效性;
-    5.当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,减少页面载入时的闪烁;
-    6.减少服务器请求次数同时减少客户端网络流量;
-    7.外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本;
-    8.外网并行加载文档加快速度,内网串行加载利于观察程序运行;
-    9.外网程序在内存中运行便于保护代码,内网正常在页面中运行方便调试与定位。
+    headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。当前版本为v2.0.0,他有如下特点:<br>
+    * 可实现一个script标签加载页面所需的全部css及js文档;
+    * 可实现资源预加载功能;
+    * 资源热加载，即随需随加载，而不需要刷新页面;
+    * 对加载文档进行缓存可控化,每两个小时更新一次(需要设置缓存生命周期参数),即能重用本地缓存又能保证代码的时效性;
+    * 当页面刷新或者重新载入时,会从缓存中优先读取,缩短响应时间,减少页面载入时的闪烁;
+    * 减少服务器请求次数同时减少客户端网络流量;
+    * 外网自动加载文档的.min版本,内网加载正常版本,开发及上线一气呵成,减少维护成本;
+    * 外网并行加载文档加快速度,内网串行加载利于观察程序运行;
+    * 外网程序在内存中运行便于保护代码,内网正常在页面中运行方便调试与定位。
+    * 从v2.0.0版本后使用indexedDB数据库，容量不再受限制，尽可用它构建更大规模的项目。
 ##快速上手<br>
     普通页面加载资源方法:<br>
-    
+```
       <script type="text/javascript" src="/a.js"></script>
       <script type="text/javascript" src="/b.js"></script>
       <script type="text/javascript" src="/c.js"></script>
@@ -21,18 +22,18 @@
       <link rel="stylesheet" href="/a.css" type="text/css">
       <link rel="stylesheet" href="/b.css" type="text/css">
       <link rel="stylesheet" href="/c.css" type="text/css">
-    
+```
    现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器<br>
-   
+```
       <script type="text/javascript" data-dir="/" data-js="a,b,c,d" data-css="a,b,c" src="/headLoader.min.js"></script>
-      
+```
 ##使用方法(任选其一)<br>
    1.标签属性定义法(推荐):<br>
-    
+```
       <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.elfAlert,_js" src="/media/user/js.min/libs/headLoader.min.js"></script>
-        
+```
    2.命令行语句法:
-    
+```
       <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
       <script type="text/javascript">
           var loader=new headLoader();
@@ -45,9 +46,9 @@
           loader.callback=function(){console.log("headLoader is done!")};   //外部命令法可以定义回调函数
           loader.run();
       </script>
-      
-   当然,您也可以写成这样:
-   
+```
+     当然,您也可以写成这样:
+```
       <script type="text/javascript">
           var loader=new headLoader({
             dataDir:"/media/users/",
@@ -60,7 +61,7 @@
           });
           loader.run();
       </script>
-      
+```
 ##使用说明<br>
     1.在页面的合适位置插入javascript标签<br>
     2.javascript标签的"data-dir"属性定义模块的基础路径(*可选)[默认值:'./'];<br>
@@ -77,7 +78,7 @@
     6.如果想预加载资源以备后面的页面使用时，可以设置preload参数为1，1为预加载功能开启，0为加载后立即应用于当前页面，默认为0<br>
     8.命令行语句法可以定义回调函数callback,标签属性定义法不支持定义回调函数<br>
 ##注意事项<br>
-    1.由于本插件需要使用localStorage功能,所以必须使用现代浏览器,例如:Chrome、Firefox等;
+    1.由于本插件需要使用indexedDB功能,所以必须使用现代浏览器,例如:Chrome、Firefox等;
     2.javascript标签的"data-css"属性定义css模块,多个css以逗号分割,headLoader会依次加载,不需要指定文件的扩展名称，"data-js"同理
     3.标签属性定义法与命令行语句法中的属性名称分别如下一一对应: data-dir 相当于 dataDir data-css 相当于 dataCss data-js 相当于 dataJs;
     4.css模块在"dataDir"路径下的"css"目录中,js模块在"dataDir"路径下的"js"目录中;
