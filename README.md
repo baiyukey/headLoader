@@ -2,8 +2,8 @@
 ==
 插件简介
 --
-###headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。当前版本为v2.0.1,他有如下特点:
-    1.可实现一个script标签加载页面所需的全部css及js文档;
+### headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。当前版本为v2.0.1,他有如下特点
+    1. 可实现一个script标签加载页面所需的全部css及js文档;
     2.可实现资源预加载功能;
     3.资源热加载，即随需随加载，而不需要刷新页面;
     4.对加载文档进行缓存可控化,每两个小时更新一次(需要设置缓存生命周期参数),即能重用本地缓存又能保证代码的时效性;
@@ -15,7 +15,7 @@
     10.从v2.0.0版本后使用indexedDB数据库，容量不再受限制，尽可用它构建更大规模的项目。
 快速上手
 --
-###普通页面加载资源方法:
+### 普通页面加载资源方法
 ```html
 <script type="text/javascript" src="/a.js"></script>
 <script type="text/javascript" src="/b.js"></script>
@@ -25,17 +25,17 @@
 <link rel="stylesheet" href="/b.css" type="text/css">
 <link rel="stylesheet" href="/c.css" type="text/css">
 ```
-###现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器
+### 现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器
 ```html
 <script type="text/javascript" data-dir="/" data-js="a,b,c,d" data-css="a,b,c" src="/headLoader.min.js"></script>
 ```
 使用方法(任选其一)
 --
-###1.标签属性定义法(推荐):
+### 1.标签属性定义法(推荐)
 ```html
 <script type="text/javascript" data-dir="/media/user/" data-css="public/global,public/color,other,_css" data-js="libs/jquery-3.1.0,libs/jquery.elfAlert,_js" src="/media/user/js.min/libs/headLoader.min.js"></script>
 ```
-###2.命令行语句法:
+### 2.命令行语句法
 ```html
 <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
 <script type="text/javascript">
@@ -50,7 +50,7 @@
     loader.run();
 </script>
 ```
-####当然,您也可以写成这样:
+#### 当然,您也可以写成这样
 ```html
 <script type="text/javascript">
   let loader=new headLoader({
