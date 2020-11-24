@@ -11,138 +11,132 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.0
+ * @version : 2.0.1
  * @copyright : http://www.uielf.com
  */
-let headLoader;
+let headLoader,localDB;
 /**
  * 通过indexedDB创建本地数据库
  * @param {String} [_option.database] 数据库名称
  * @param {Function} [_option.getVersion] 获取动态数据版本号，版本号变更后数据将无效
  * @param {Object} [_option.tables] 表及字段名称,例如{js:["key","value","version"],...}
  */
-let LocalDB=function(_option){
-  let idb=null;
-  //idb的状态 0:关闭，1:打开
-  let status=0;
-  const dbAble=function(){
-    if(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB) return true;
-    console.log("您的浏览器不支持indexedDB，请使用现代浏览器，例如chrome,firefox等.");
-    return false;
-  };
-  const openDB=function(){
-    return new Promise((_resolve,_reject)=>{
-      if(status===1 && typeof (_resolve)!=="undefined") _resolve("success");
-      let request=indexedDB.open(_option.database); //建立打开 IndexedDB
-      request.onerror=function(_e){
-        _reject(_e);
-      };
-      request.onsuccess=function(_e){
-        idb=request.result;
-        status=1;
-        _resolve(_e);
-      };
-      //createTable不能放到onsuccess中，否则会出错。
-      return request.onupgradeneeded=function(_e){
-        idb=_e.target.result;
-        let tableNames=Object.keys(_option.tables);
-        let createColumn=function(_i){
-          if(!idb.objectStoreNames.contains(tableNames[_i])){
-            //创建表，声明主键字段名为key
-            let objectStore=idb.createObjectStore(tableNames[_i],{keyPath:"key"});
-            //非关系型数据库的特点，表中的每个字段存为一个子表，美其名曰“索引”(createIndex)
-            //在往子表里加数据时只需增加到Value字段,所以Key字段的值引用Value中的某个属性值即可，也可以让它自动生成
-            //3个参数：子表名称，Key字段的值引用Value字段的哪个属性，Key字段的值是否唯一
-            _option.tables[tableNames[_i]].forEach(_c=>objectStore.createIndex(_c,"key",{unique:true}));
-            if(_i<tableNames.length-1){
-              createColumn(_i+1);
-            }
-            else{
-              _resolve(idb);
+(function(_global){
+  let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+  localDB=function(_option){
+    let idb=null;
+    //idb的状态 0:关闭，1:打开
+    let status=0;
+    const dbAble=function(){
+      if(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB) return true;
+      console.log("您的浏览器不支持indexedDB，请使用现代浏览器，例如chrome,firefox等.");
+      return false;
+    };
+    const openDB=function(){
+      return new Promise((_resolve,_reject)=>{
+        if(status===1 && typeof (_resolve)!=="undefined") _resolve("success");
+        let request=indexedDB.open(_option.database); //建立打开 IndexedDB
+        request.onerror=function(_e){
+          _reject(_e);
+        };
+        request.onsuccess=function(_e){
+          idb=request.result;
+          status=1;
+          _resolve(_e);
+        };
+        //createTable不能放到onsuccess中，否则会出错。
+        return request.onupgradeneeded=function(_e){
+          idb=_e.target.result;
+          let tableNames=Object.keys(_option.tables);
+          for(const _tableName of tableNames){
+            if(!idb.objectStoreNames.contains(_tableName)){
+              //创建表，声明主键字段名为key
+              let objectStore=idb.createObjectStore(_tableName,{keyPath:"key"});
+              //非关系型数据库的特点，表中的每个字段存为一个子表，美其名曰“索引”(createIndex)
+              //在往子表里加数据时只需增加到Value字段,所以Key字段的值引用Value中的某个属性值即可，也可以让它自动生成
+              //3个参数：子表名称，Key字段的值引用Value字段的哪个属性，Key字段的值是否唯一
+              _option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,"key",{unique:true}));
             }
           }
+          _e.target.transaction.oncomplete=()=>_resolve(idb);
         };
-        createColumn(0);
-      };
-    });
-  };
-  const closeDB=async function(){
-    if(status===0) return;
-    if(idb) idb.close();
-    console.log(`数据库${_option.database}已关闭`);
-    return status=0;
-  };
-  const deleteDB=async function(){
-    if(!idb) return console.warn(`目前还没有数库${_option.database}`);
-    await closeDB();
-    indexedDB.deleteDatabase(_option.database);
-    idb=null;
-    console.log(`数据库${_option.database}已删除`);
-  };
-  /**
-   * 定义某条数据
-   * @param {String} [_tableName] -表名
-   * @param {String} [_keyName] -键名
-   * @param {...} [_value] -键值
-   * @return new Promise()
-   */
-  const setItem=async function(_tableName,_keyName,_value){
-    //如果数据已存在，覆盖原有数据，否则写入
-    return new Promise((_resolve,_reject)=>{
-      let thisTable=idb.transaction(_tableName,"readwrite").objectStore(_tableName);
-      let thisData={
-        key:_keyName,
-        value:_value,
-        version:_option.getVersion()
-      };
-      let getMethod=function(__resolve,__reject){
-        let thisKey=thisTable.index("key").get(_keyName);
-        thisKey.onsuccess=(_e)=>{
-          __resolve(_e.target.result ? "put" : "add");
+      });
+    };
+    const closeDB=async function(){
+      if(status===0) return status;
+      if(idb) idb.close();
+      console.log(`数据库${_option.database}已关闭`);
+      return status=0;
+    };
+    const deleteDB=async function(){
+      if(!idb) return console.warn(`目前还没有数库${_option.database}`);
+      await closeDB();
+      indexedDB.deleteDatabase(_option.database);
+      idb=null;
+      console.log(`数据库${_option.database}已删除`);
+    };
+    /**
+     * 定义某条数据
+     * @param {String} [_tableName] -表名
+     * @param {String} [_keyName] -键名
+     * @param {...} [_value] -键值
+     * @return new Promise()
+     */
+    const setItem=async function(_tableName,_keyName,_value){
+      //如果数据已存在，覆盖原有数据，否则写入
+      return new Promise((_resolve,_reject)=>{
+        let thisTable=idb.transaction(_tableName,"readwrite").objectStore(_tableName);
+        let thisData={
+          key:_keyName,
+          value:_value,
+          version:_option.getVersion()
         };
-        thisKey.onerror=()=>__resolve("add");
-      };
-      new Promise(getMethod).then((_method)=>{
-        let setData=thisTable[_method](thisData);
-        setData.onsuccess=function(){
-          //console.log(`${_keyName}数据${_method==="add" ? "写入" : "更新"}成功`);
-          _resolve("success");
+        let getMethod=function(__resolve,__reject){
+          let thisKey=thisTable.index("key").get(_keyName);
+          thisKey.onsuccess=(_e)=>{
+            __resolve(_e.target.result ? "put" : "add");
+          };
+          thisKey.onerror=()=>__resolve("add");
         };
-        setData.onerror=function(_e){
+        new Promise(getMethod).then((_method)=>{
+          let setData=thisTable[_method](thisData);
+          setData.onsuccess=function(){
+            //console.log(`${_keyName}数据${_method==="add" ? "写入" : "更新"}成功`);
+            _resolve("success");
+          };
+          setData.onerror=function(_e){
+            _reject(_e);
+          };
+        });
+      });
+    };
+    /**
+     * 获取某条数据
+     * @param {String} [_tableName] -表名
+     * @param {String} [_keyName] -键名
+     * @return new Promise()
+     */
+    const getItem=function(_tableName,_keyName){
+      return new Promise((_resolve,_reject)=>{
+        let table=idb.transaction(_tableName,'readonly').objectStore(_tableName);
+        let list=table.index('key');
+        let request=list.get(_keyName);
+        request.onsuccess=function(_e){
+          _resolve(request.result);
+        };
+        request.onerror=function(_e){
           _reject(_e);
         };
       });
-    });
+    };
+    if(dbAble){
+      this.open=openDB;
+      this.close=closeDB;
+      this.delete=deleteDB;
+      this.setItem=setItem;
+      this.getItem=getItem;
+    }
   };
-  /**
-   * 获取某条数据
-   * @param {String} [_tableName] -表名
-   * @param {String} [_keyName] -键名
-   * @return new Promise()
-   */
-  const getItem=function(_tableName,_keyName){
-    return new Promise((_resolve,_reject)=>{
-      let table=idb.transaction(_tableName,'readonly').objectStore(_tableName);
-      let list=table.index('key');
-      let request=list.get(_keyName);
-      request.onsuccess=function(_e){
-        _resolve(request.result);
-      };
-      request.onerror=function(_e){
-        _reject(_e);
-      };
-    });
-  };
-  if(dbAble){
-    this.open=openDB;
-    this.close=closeDB;
-    this.delete=deleteDB;
-    this.setItem=setItem;
-    this.getItem=getItem;
-  }
-};
-(function(_global){
-  let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   headLoader=function(_val){
     let val=_val || {};
     this.dataDir=val.dataDir || "";
@@ -451,7 +445,7 @@ let LocalDB=function(_option){
       },
       getVersion:getCacheVersion
     };
-    let thisDB=new LocalDB(localDBOption);
+    let thisDB=new localDB(localDBOption);
     this.run=function(){
       (async()=>{
         await thisDB.open();
