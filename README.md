@@ -5,7 +5,7 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.0.1,他有如下特点：
+### 当前版本为v2.0.2,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档;
     2.可实现资源预加载功能;
     3.资源热加载，即随需随加载，而不需要刷新页面;
@@ -28,7 +28,7 @@
 <link rel="stylesheet" href="/b.css" type="text/css">
 <link rel="stylesheet" href="/c.css" type="text/css">
 ```
-### 现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动缓存，再次请求时不会重复请求服务器
+### 现在，可以使用headLoader实现上述功能  *注意！headerLoader.js不仅能实现上述功能，还会自动将资源缓存到indexedDB，当刷新页面或者其它页面再次请求相同资源时，直接从缓存读取，不会重复请求服务器
 ```html
 <script type="text/javascript" data-dir="/" data-js="a,b,c,d" data-css="a,b,c" src="/headLoader.min.js"></script>
 ```
