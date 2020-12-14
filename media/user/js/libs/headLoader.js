@@ -11,7 +11,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.1
+ * @version : 2.0.2
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -142,6 +142,7 @@ let headLoader,localDB;
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
+    this.dataFont=val.dataFont || [];
     this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认2 | 可选项
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
@@ -203,9 +204,9 @@ let headLoader,localDB;
     let setCache=function(_cacheKey,_value){
       thisDB.setItem("data",thisHex.encode(_cacheKey),_value).then(null);
     };
-    let getUrl=function(_module,_type){
-      if(that.dataActive) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace(`.${_type}`,``)+min)+"."+_type;//.js不一定是最后的字符
-      return `${that.dataDir}${_module.split("|")[0]}.${_type}`;
+    let getUrl=function(_module,_type,_ext){
+      if(that.dataActive && ["js","css"].includes(_type)) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace("."+(_ext || _type),"")+min)+"."+(_ext || _type);//.js不一定是最后的字符
+      return `${that.dataDir}${_type}/${_module.split("|")[0]}.${_ext || _type}`;
     };
     let getCacheKey=function(_module,_type){
       return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min).replace(/\./g,'_');
@@ -286,9 +287,7 @@ let headLoader,localDB;
           }
         }
         else{
-          if(typeof (_callback)==="function"){
-            _callback(); //回调，执行下一个引用
-          }
+          if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
         }
       };
       //getCache(cacheKey).then(runThis);
@@ -296,6 +295,15 @@ let headLoader,localDB;
         runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
       });
     };//加载css
+    let loadFont=async function(_module,_callback){
+      //FontFace目前属于实验功能
+      let url=getUrl(_module,"fonts","woff")+"?v="+cacheVersion;
+      if(typeof (FontFace)!=="function") return new Promise(_resolve=>_resolve("success"));
+      const newFont=new FontFace("elfRound","url("+url+")");
+      await newFont.load();
+      document.fonts.add(newFont);
+      if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
+    };//加载font
     let writeJs=function(_url,_text){
       //if(document.getElementsByTagName('HEAD').length===0) requestAnimationFrame(()=>writeJs(_url,_text));
       if(min!==""){
@@ -355,6 +363,7 @@ let headLoader,localDB;
           "JS":writeJs,
           "CSS":writeCss
         }[_fileType.toUpperCase()];
+        if(!writeCode) return _resolve("refuse this method.");
         let code={};
         let Promises=[];
         _modules.forEach((_k)=>{
@@ -389,22 +398,22 @@ let headLoader,localDB;
         console.log('当前页面使用headLoader'+(that.multiLoad ? "并行" : "串行")+'网络请求%c'+mediaLength+'个%cJS/CSS文件，程序用时%c'+thisDuration+'毫秒%c，累计网络请求%c'+_global.headLoaderHistory.length+'个%cJS/CSS文件，单文件平均用时%c'+avg+'毫秒','color:#1b8884','','color:#1b8884','','color:#1b8884','','color:#1b8884','');
       },3000);
     };
-    let loadThese=function(_modules,_fileType,_callback){
+    let loadThese=function(_modules,_fileType){
       if(document.getElementsByTagName('HEAD').length===0) return false;
       if(!_modules || _modules.length===0){
-        if(typeof (_callback)==="function") _callback.call(false);
-        return false;
+        return new Promise(_resolve=>_resolve("success"));
       }
       let loadCode={
         "JS":loadJs,
-        "CSS":loadCss
+        "CSS":loadCss,
+        "FONT":loadFont
       }[_fileType.toUpperCase()];
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appcacheVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
-      let oneByOne=function(){
+      let oneByOne=function(_resolve){
         let i=0;
         let runThis=function(){
           if(i>=_modules.length){
-            if(typeof (_callback)==="function") _callback.call(false);
+            _resolve("success");
           }
           else{
             loadCode(_modules[i],async()=>{
@@ -416,20 +425,19 @@ let headLoader,localDB;
         };
         runThis();
       };//串行
-      let promiseAll=function(){
+      let promiseAll=function(_resolve){
         if(!_modules || _modules.length===0){
-          if(typeof (_callback)==="function") _callback.call(false);
-          return false;
+          _resolve("success");
         }
         let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(function(_resolve){
           loadCode(_modules[i],()=>_resolve("success"));
         }));
         Promise.all(promises).then(async()=>{
           if(_modules.length!==0 && that.preload===0) await writeThese(_modules,_fileType);
-          if(typeof (_callback)==="function") _callback.call(false);
+          _resolve("success");
         });
       };//并行
-      (that.multiLoad ? promiseAll : oneByOne)();//线上并行，线下串行（可调试）
+      return new Promise(that.multiLoad ? promiseAll : oneByOne);//线上并行，线下串行（可调试）
     };//加载
     let thisHex=new hex();
     let localDBOption={
@@ -451,14 +459,18 @@ let headLoader,localDB;
         await thisDB.open();
         that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
         that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
+        that.dataFont=standardized(that.dataFont.join(",").replace(/_js/g,modDir).split(","));
         cacheVersion=getCacheVersion(dataLifecycle);
         mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
         let loadAllCallback=function(){
           if(that.showLog) showLog();
           if(typeof (that.callback)==="function") that.callback.call(false);
         };
-        let loadCssCallback=function(){ loadThese(that.dataJs,"js",loadAllCallback);};
-        loadThese(that.dataCss,"css",loadCssCallback);//先加载dataCss，后加载dataJs
+        //先加载dataCss，后加载dataJs
+        loadThese(that.dataCss,"css");
+        loadThese(that.dataFont,"font");
+        await loadThese(that.dataJs,"js");
+        loadAllCallback();
       })();
     };
   };
@@ -466,7 +478,8 @@ let headLoader,localDB;
   let allScript=document.getElementsByTagName("script");
   let thisScript;
   let dataJs=[],
-    dataCss=[];
+    dataCss=[],
+    dataFont=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
   let dataLifecycle=2;//缓存周期默认为2个小时
@@ -518,11 +531,18 @@ let headLoader,localDB;
   else{
     if(reLog) console.log('%c友情提示:script标签未设置"data-js"属性',"color:#69F;");
   }
+  if(thisScript.hasAttribute("data-font")){
+    dataFont=thisScript.getAttribute("data-font").split(",");//.replace(/_js/g,modDir);
+  }
+  else{
+    if(reLog) console.log('%c友情提示:script标签未设置"data-js"属性',"color:#69F;");
+  }
   if(allScript.length>0 && min!=="") allScript.item(0).remove(); //线上环境隐藏headLoader.js
   let thisLoader=new headLoader();
   if(dataDir) thisLoader.dataDir=dataDir;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
+  thisLoader.dataFont=dataFont;
   thisLoader.dataLifecycle=dataLifecycle;
   //thisLoader.showLog=true;//是否显示统计
   thisLoader.run();
