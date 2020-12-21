@@ -11,7 +11,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.2
+ * @version : 2.0.3
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -211,98 +211,102 @@ let headLoader,localDB;
     let getCacheKey=function(_module,_type){
       return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min).replace(/\./g,'_');
     };
-    let loadJs=function(_module,_callback){
-      if(isLink(_module)){
-        linkJs(_module);
-        if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-        return false;
-      }
-      let url=getUrl(_module,"js")+"?v="+cacheVersion;//.js不一定是最后的字符
-      let cacheKey=getCacheKey(_module,"js");
-      let runThis=function(_value){
-        let xhr;
-        let js=_value;
-        if(js===null){
-          if(window.XMLHttpRequest){
-            xhr=new XMLHttpRequest();
-          }
-          else if(window.ActiveXObject){
-            xhr=new ActiveXObject("Microsoft.XMLHTTP");
-          }
-          if(typeof (xhr)!=="undefined"){
-            xhr.open("GET",url);
-            xhr.send(null);
-            xhr.onreadystatechange=function(){
-              if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-                js=xhr.responseText;
-                js=js===null ? "" : js;
-                setCache(cacheKey,js);
-                mediaLength++;//增加一次资源加载次数
-                if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-              }
-            };
-          }
+    let loadJs=function(_module){
+      return new Promise(_r=>{
+        if(isLink(_module)){
+          linkJs(_module);
+          return _r("success");
         }
-        else{
-          if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-        }
-      };
-      //getCache(cacheKey).then(runThis);
-      thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
-        runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
+        let url=getUrl(_module,"js")+"?v="+cacheVersion;//.js不一定是最后的字符
+        let cacheKey=getCacheKey(_module,"js");
+        let runThis=function(_value){
+          let xhr;
+          let js=_value;
+          if(js===null){
+            if(window.XMLHttpRequest){
+              xhr=new XMLHttpRequest();
+            }
+            else if(window.ActiveXObject){
+              xhr=new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            if(typeof (xhr)!=="undefined"){
+              xhr.open("GET",url);
+              xhr.send(null);
+              xhr.onreadystatechange=function(){
+                if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
+                  js=xhr.responseText;
+                  js=js===null ? "" : js;
+                  setCache(cacheKey,js);
+                  mediaLength++;//增加一次资源加载次数
+                  _r("success");
+                }
+              };
+            }
+          }
+          else{
+            _r("success");
+          }
+        };
+        //getCache(cacheKey).then(runThis);
+        thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+          runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
+        });
       });
     };//加载js
-    let loadCss=function(_module,_callback){
-      if(isLink(_module)){
-        linkCss(_module);
-        if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-        return false;
-      }
-      let url=getUrl(_module,"css")+"?v="+cacheVersion;//.js不一定是最后的字符
-      let cacheKey=getCacheKey(_module,"css");
-      let runThis=function(_value){
-        let xhr;
-        let css=_value;
-        if(css===null){
-          if(window.XMLHttpRequest){
-            xhr=new XMLHttpRequest();
-          }
-          else if(window.ActiveXObject){
-            xhr=new ActiveXObject("Microsoft.XMLHTTP");
-          }
-          if(typeof (xhr)!=="undefined"){
-            xhr.open("GET",url);
-            xhr.send(null);
-            xhr.onreadystatechange=function(){
-              if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-                css=xhr.responseText;
-                css=css===null ? "" : css;
-                css=css.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
-                css=css.replace(/\[v]/g,mediaCacheVersion);
-                setCache(cacheKey,css);
-                mediaLength++;//增加一次资源加载次数
-                if(typeof (_callback)==="function") _callback();
-              }
-            };
-          }
+    let loadCss=function(_module){
+      return new Promise(_r=>{
+        if(isLink(_module)){
+          linkCss(_module);
+          return _r("success");
         }
-        else{
-          if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
-        }
-      };
-      //getCache(cacheKey).then(runThis);
-      thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
-        runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
+        let url=getUrl(_module,"css")+"?v="+cacheVersion;//.js不一定是最后的字符
+        let cacheKey=getCacheKey(_module,"css");
+        let runThis=function(_value){
+          let xhr;
+          let css=_value;
+          if(css===null){
+            if(window.XMLHttpRequest){
+              xhr=new XMLHttpRequest();
+            }
+            else if(window.ActiveXObject){
+              xhr=new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            if(typeof (xhr)!=="undefined"){
+              xhr.open("GET",url);
+              xhr.send(null);
+              xhr.onreadystatechange=function(){
+                if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
+                  css=xhr.responseText;
+                  css=css===null ? "" : css;
+                  css=css.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
+                  css=css.replace(/\[v]/g,mediaCacheVersion);
+                  setCache(cacheKey,css);
+                  mediaLength++;//增加一次资源加载次数
+                  _r("success");
+                }
+              };
+            }
+          }
+          else{
+            _r("success");
+          }
+        };
+        //getCache(cacheKey).then(runThis);
+        thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+          runThis(_value && _value.version===localDBOption.getVersion() ? _value.value : null);
+        });
       });
     };//加载css
-    let loadFont=async function(_module,_callback){
+    let loadFont=function(_module){
       //FontFace目前属于实验功能
-      let url=getUrl(_module,"fonts","woff")+"?v="+cacheVersion;
-      if(typeof (FontFace)!=="function") return new Promise(_resolve=>_resolve("success"));
-      const newFont=new FontFace("elfRound","url("+url+")");
-      await newFont.load();
-      document.fonts.add(newFont);
-      if(typeof (_callback)==="function") _callback(); //回调，执行下一个引用
+      return new Promise(async _r=>{
+        let url=getUrl(_module,"fonts","woff")+"?v="+cacheVersion;
+        if(typeof (FontFace)!=="function") return new Promise(_resolve=>_resolve("success"));
+        const newFont=new FontFace("elfRound","url("+url+")");
+        await newFont.load();
+        document.fonts.add(newFont);
+        _r("success");
+      });
     };//加载font
     let writeJs=function(_url,_text){
       //if(document.getElementsByTagName('HEAD').length===0) requestAnimationFrame(()=>writeJs(_url,_text));
@@ -409,28 +413,29 @@ let headLoader,localDB;
         "FONT":loadFont
       }[_fileType.toUpperCase()];
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appcacheVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
-      let oneByOne=function(_resolve){
+      let oneByOne=async function(_resolve){
         let i=0;
-        let runThis=function(){
+        let runThis=async function(){
           if(i>=_modules.length){
-            _resolve("success");
+            return true;
           }
           else{
-            loadCode(_modules[i],async()=>{
-              if(that.preload===0) await writeThese([_modules[i]],_fileType);
-              i++;
-              runThis();
-            });
+            await loadCode(_modules[i]);
+            if(that.preload===0) await writeThese([_modules[i]],_fileType);
+            i++;
+            await runThis();
           }
         };
-        runThis();
+        await runThis();
+        _resolve("success");
       };//串行
       let promiseAll=function(_resolve){
         if(!_modules || _modules.length===0){
           _resolve("success");
         }
-        let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(function(_resolve){
-          loadCode(_modules[i],()=>_resolve("success"));
+        let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(async function(_resolve){
+          await loadCode(_modules[i]);
+          _resolve("success");
         }));
         Promise.all(promises).then(async()=>{
           if(_modules.length!==0 && that.preload===0) await writeThese(_modules,_fileType);
