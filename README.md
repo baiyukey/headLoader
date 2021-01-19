@@ -75,7 +75,7 @@
     3.javascript标签的"data-css"属性定义css模块,多个css以逗号分割,headLoader会依次加载,不需要指定文件的扩展名称(*可选)[默认值:'']
     4.javascript标签的"data-js"属性定义js模块,多个js以逗号分割,headLoader会依次加载,不需要指定文件的扩展名称(*可选)[默认值:''];
     5.data-lifecycle为Number类型，代表缓存生成周期，单位小时，默认2 | 可选项
-    6.data-active为Boolean类型，代表是否自动切换线上线下路径，默认flase | 可选项
+    6.data-active为Boolean类型，代表是否自动切换线上线下路径，默认flase | 可选项 [*请参考具体说明13]
     5.标签属性定义法与命令行语句法中的属性名称分别如下一一对应:
         data-dir  相当于 dataDir
         data-css 相当于 dataCss
@@ -84,7 +84,7 @@
         data-active    相当于 dataActive
     6.如果想预加载资源以备后面的页面使用时，可以设置preload参数为1，1为预加载功能开启，0为加载后立即应用于当前页面，默认为0
     8.命令行语句法可以定义回调函数callback,标签属性定义法不支持定义回调函数
-注意事项
+具体说明
 --
     1.由于本插件需要使用indexedDB功能,所以必须使用现代浏览器,例如:Chrome、Firefox等;
     2.javascript标签的"data-css"属性定义css模块,多个css以逗号分割,headLoader会依次加载,不需要指定文件的扩展名称，"data-js"同理
