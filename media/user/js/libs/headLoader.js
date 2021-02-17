@@ -11,7 +11,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.5
+ * @version : 2.0.6
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -222,33 +222,34 @@ let headLoader,localDB;
     };
     //获取文件头信息
     let getEtag=function(url){
-      return new Promise(_r=>{
+      return new Promise((_r,_rj)=>{
         let xhr=new XHR();
         xhr.open("HEAD",url,true);
         xhr.send();
         xhr.onreadystatechange=function(){
           if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
             //文件修改后etag会变化
-            _r(xhr.getResponseHeader("etag"));
+            _r(xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "");
           }
         };
+        xhr.onerror=_e=>_rj(_e);
       });
     };
     //获取文件缓存状态值，判断是否已经过期
     let getStatus=function(_value,_url){
-      return new Promise(_r=>{
+      return new Promise((_r,_rj)=>{
         //0：缓存未到期
-        //1：缓存已到期或根本不存在，需要从服务器获取
-        //2：缓存已到期，但服务器文件未变化，继续使用缓存
-        if(!_value) return _r(1);
+        //1：缓存已到期，但服务器文件未变化，继续使用缓存
+        //2：缓存已到期或不存在，需要从服务器获取
+        if(!_value) return _r(2);
         if(_value.version!==localDBOption.getVersion()){//缓存过期
-          //先读取文件头的etag判断文件是否已修改，1:已修改，2:未修改
-          if(!_value.etag) _r(1);//注意localhost文件的etag永远是null
+          //先读取文件头的etag判断文件是否已修改
+          if(_value.etag==="") _r(2);
           else{
             getEtag(_url).then(_v=>{
-              if(_value.etag!==_v) _r(1);
+              if(_value.etag===_v) _r(1);
               else _r(2);
-            });
+            }).catch(_v=>_rj(_v));
           }
         }
         else{
@@ -259,46 +260,47 @@ let headLoader,localDB;
     let loadJsCss=function(_module,_fileType){
       return new Promise(_r=>{
         if(isLink(_module)){
-          linkJs(_module);
+          if(_fileType==="js") linkJs(_module);
+          else if(_fileType==="css") linkCss(_module);
           return _r("success");
         }
         let url=getUrl(_module,_fileType)+"?v="+cacheVersion;//.js不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
         let value;
         let runThis=function(_io){
-          if(_io===1){
+          if(_io===0){
+            _r("success");
+          }
+          else if(_io===1){
+            setCache(cacheKey,value);
+            _r("success");
+          }
+          else if(_io===2){
             let xhr=new XHR();
             xhr.open("GET",url,true);
             xhr.send();
             xhr.onreadystatechange=function(){
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-                let content=xhr.responseText;
-                content=content===null ? "" : content;
+                let content=xhr.responseText || "";
                 if(_fileType==="css"){
                   //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
                   content=content.replace(/\[v]/g,mediaCacheVersion);
                 }
+                //注意某些服务器不会返回etag或者last-modified
                 setCache(cacheKey,{
                   value:content,
-                  etag:xhr.getResponseHeader("etag")
+                  etag:xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
                 });
                 mediaLength++;//增加一次资源加载次数
                 _r("success");
               }
             };
           }
-          else if(_io===2){
-            setCache(cacheKey,value);
-            _r("success");
-          }
-          else{
-            _r("success");
-          }
         };
         //getCache(cacheKey).then(runThis);
         thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
           value=_value;
-          getStatus(value,url).then(_v=>runThis(_v));
+          getStatus(value,url).then(_v=>runThis(_v)).catch(_v=>console.error(_v));
         });
       });
     };//加载js
@@ -351,7 +353,7 @@ let headLoader,localDB;
       let thisTag=document.createElement("script");
       //link.type="text/javascript";
       setAttribute(thisTag,_url.split("|").splice(1));
-      thisTag.src=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".js","")+min+".js?"+cacheVersion;
+      thisTag.src=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".js","")+min+".js?v="+cacheVersion;
       head.appendChild(thisTag);
     };//往页面引入js
     let linkCss=function(_url){
@@ -362,7 +364,7 @@ let headLoader,localDB;
       thisTag.type="text/css";
       thisTag.rel="stylesheet";
       thisTag.media="screen";
-      thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?"+cacheVersion;
+      thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?v="+cacheVersion;
       head.appendChild(thisTag);
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
