@@ -11,13 +11,13 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.6
+ * @version : 2.0.7
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
 /**
- * 通过indexedDB创建本地数据库
- * @param {String} [_option.database] 数据库名称
+ * 通过indexedDB创建站点缓存仓库
+ * @param {String} [_option.database] 缓存仓库名称
  * @param {Function} [_option.getVersion] 获取动态数据版本号，版本号变更后数据将无效
  * @param {Object} [_option.tables] 表及字段名称,例如{js:["key","value","version"],...}
  */
@@ -43,7 +43,7 @@ let headLoader,localDB;
     const openDB=function(){
       return new Promise((_resolve,_reject)=>{
         if(status===1 && typeof (_resolve)!=="undefined") _resolve("success");
-        let request=indexedDB.open(_option.database); //建立打开 IndexedDB
+        let request=indexedDB.open(_option.database); //建立打开 indexedDB
         request.onerror=function(_e){
           _reject(_e);
         };
@@ -73,15 +73,15 @@ let headLoader,localDB;
     const closeDB=async function(){
       if(status===0) return status;
       if(idb) idb.close();
-      console.log(`数据库${_option.database}已关闭`);
+      console.log(`${_option.database}已关闭`);
       return status=0;
     };
     const deleteDB=async function(){
-      if(!idb) return console.warn(`目前还没有数库${_option.database}`);
+      if(!idb) return console.warn(`目前还没有库${_option.database}`);
       await closeDB();
       indexedDB.deleteDatabase(_option.database);
       idb=null;
-      console.log(`数据库${_option.database}已删除`);
+      console.log(`${_option.database}已删除`);
     };
     /**
      * 定义某条数据
@@ -229,7 +229,7 @@ let headLoader,localDB;
         xhr.onreadystatechange=function(){
           if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
             //文件修改后etag会变化
-            _r(xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "");
+            _r(xhr.getResponseHeader("etag")||xhr.getResponseHeader("last-modified")||"");
           }
         };
         xhr.onerror=_e=>_rj(_e);
@@ -281,7 +281,7 @@ let headLoader,localDB;
             xhr.send();
             xhr.onreadystatechange=function(){
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-                let content=xhr.responseText || "";
+                let content=xhr.responseText||"";
                 if(_fileType==="css"){
                   //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
                   content=content.replace(/\[v]/g,mediaCacheVersion);
@@ -289,7 +289,7 @@ let headLoader,localDB;
                 //注意某些服务器不会返回etag或者last-modified
                 setCache(cacheKey,{
                   value:content,
-                  etag:xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
+                  etag:xhr.getResponseHeader("etag")||xhr.getResponseHeader("last-modified")||""
                 });
                 mediaLength++;//增加一次资源加载次数
                 _r("success");
