@@ -11,16 +11,10 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.7
+ * @version : 2.0.8
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
-/**
- * 通过indexedDB创建站点缓存仓库
- * @param {String} [_option.database] 缓存仓库名称
- * @param {Function} [_option.getVersion] 获取动态数据版本号，版本号变更后数据将无效
- * @param {Object} [_option.tables] 表及字段名称,例如{js:["key","value","version"],...}
- */
 (function(_global){
   let XHR=new Function();
   if(_global.XMLHttpRequest){
@@ -31,57 +25,98 @@ let headLoader,localDB;
   }
   else return alert('浏览器不支持XMLHttpRequest，请使用现代浏览器，例如chrome等。');
   let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+  let getCacheVersion=function(_hours){
+    let newDate=new Date();
+    let hours=_hours || 2;//每天中的每两个小时为一个值
+    hours=Math.min(24,hours);
+    return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/hours);
+  };
   localDB=function(_option){
-    let idb=null;
-    //idb的状态 0:关闭，1:打开
-    let status=0;
+    /**
+     * 通过indexedDB创建站点缓存仓库
+     * @param {String} [_option.database] 缓存仓库名称
+     * @param {Function} [_option.version] 获取动态数据版本号
+     * @param {Object} [_option.tables] 表及字段名称,例如{js:["key","value","version"],...}
+     */
+    let option={
+      database:"headLoaderDB",
+      tables:{
+        //        js:["key","value","version"],
+        //        css:["key","value","version"],
+        //        font:["key","value","version"],
+        //        icon:["key","value","version"],
+        //        image:["key","value","version"],
+        //        video:["key","value","version"],
+        data:["key","value","version"]
+      },
+      version:getCacheVersion
+    };
+    Object.assign(option,_option);
+    _global.localDBResult=_global.localDBResult || null;
+    //_global.localDBResult的状态 0:关闭，1:打开
+    _global.localDBStatus=_global.localDBStatus || 0;
     const dbAble=function(){
-      if(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB) return true;
+      if(_global.indexedDB || _global.webkitIndexedDB || _global.mozIndexedDB || _global.msIndexedDB) return true;
       console && console.log("您的浏览器不支持indexedDB，请使用现代浏览器，例如chrome,firefox等.");
       return false;
     };
     const openDB=function(){
+      if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
       return new Promise((_resolve,_reject)=>{
-        if(status===1 && typeof (_resolve)!=="undefined") _resolve("success");
-        let request=indexedDB.open(_option.database); //建立打开 indexedDB
+        if(_global.localDBResult!==null && _global.localDBStatus===1){
+          //if(reLog) console.log(`${option.database}不必重复打开`);
+          _resolve("success");
+          return;
+        }
+        let request=_global.indexedDB.open(option.database); //建立打开 indexedDB
         request.onerror=function(_e){
           _reject(_e);
         };
         request.onsuccess=function(_e){
-          idb=request.result;
-          status=1;
+          _global.localDBResult=request.result;
+          _global.localDBStatus=1;
+          //if(reLog) console.log(`${option.database}已打开`);
           _resolve(_e);
         };
-        //createTable不能放到onsuccess中，否则会出错。
-        return request.onupgradeneeded=function(_e){
-          idb=_e.target.result;
-          let tableNames=Object.keys(_option.tables);
+        request.onupgradeneeded=function(_e){
+          _global.localDBResult=_e.target.result;
+          _global.localDBStatus=1;
+          let tableNames=Object.keys(option.tables);
           for(const _tableName of tableNames){
-            if(!idb.objectStoreNames.contains(_tableName)){
+            if(!_global.localDBResult.objectStoreNames.contains(_tableName)){
               //创建表，声明主键字段名为key
-              let objectStore=idb.createObjectStore(_tableName,{keyPath:"key"});
+              let objectStore=_global.localDBResult.createObjectStore(_tableName,{keyPath:"key"});
               //非关系型数据库的特点，表中的每个字段存为一个子表，美其名曰“索引”(createIndex)
               //在往子表里加数据时只需增加到Value字段,所以Key字段的值引用Value中的某个属性值即可，也可以让它自动生成
-              //3个参数：子表名称，Key字段的值引用Value字段的哪个属性，Key字段的值是否唯一
-              _option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,"key",{unique:true}));
+              //createIndex3个参数：子表名称，Key字段的值引用Value字段的哪个属性，Key字段的值是否唯一
+              option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,"key",{unique:true}));
             }
           }
-          _e.target.transaction.oncomplete=()=>_resolve(idb);
+          _e.target.transaction.oncomplete=()=>_resolve(_global.localDBResult);
         };
       });
     };
-    const closeDB=async function(){
-      if(status===0) return status;
-      if(idb) idb.close();
-      console.log(`${_option.database}已关闭`);
-      return status=0;
+    const closeDB=function(){
+      if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
+      return new Promise((_resolve,_reject)=>{
+        let runThis=function(){
+          if(_global.localDBStatus===0){
+            _resolve("success");
+            return;
+          }
+          if(_global.localDBResult!==null) _global.localDBResult.close();
+          _global.localDBStatus=0;
+          //if(reLog) console.log(`${option.database}已关闭`);
+          _resolve("success");
+        };
+        _global.waitCloseLocalDB=setTimeout(runThis,3000);
+      });
     };
     const deleteDB=async function(){
-      if(!idb) return console.warn(`目前还没有库${_option.database}`);
+      if(!_global.localDBResult) return console.warn(`目前还没有库${option.database}`);
       await closeDB();
-      indexedDB.deleteDatabase(_option.database);
-      idb=null;
-      console.log(`${_option.database}已删除`);
+      _global.indexedDB.deleteDatabase(option.database);
+      if(reLog) console.log(`${option.database}已删除`);
     };
     /**
      * 定义某条数据
@@ -90,15 +125,16 @@ let headLoader,localDB;
      * @param {...} [_value] -键值
      * @return new Promise()
      */
-    const setItem=async function(_tableName,_keyName,_value){
+    const setItem=function(_tableName,_keyName,_value){
       //如果数据key已存在，覆盖原有数据，否则写入
-      return new Promise((_resolve,_reject)=>{
-        let thisTable=idb.transaction(_tableName,"readwrite").objectStore(_tableName);
+      return new Promise(async(_resolve,_reject)=>{
+        await openDB();
+        let thisTable=_global.localDBResult.transaction(_tableName,"readwrite").objectStore(_tableName);
         let thisData={
           key:_keyName,
-          value:_value.value,
+          value:_value.value ? _value.value : _value,
           etag:_value.etag,
-          version:_option.getVersion()
+          version:option.version()
         };
         let getMethod=function(__resolve,__reject){
           let thisKey=thisTable.index("key").get(_keyName);
@@ -125,9 +161,10 @@ let headLoader,localDB;
      * @param {String} [_keyName] -键名
      * @return new Promise()
      */
-    const getItem=function(_tableName,_keyName){
+    const getItem=async function(_tableName,_keyName){
+      await openDB();
       return new Promise((_resolve,_reject)=>{
-        let table=idb.transaction(_tableName,'readonly').objectStore(_tableName);
+        let table=_global.localDBResult.transaction(_tableName,'readonly').objectStore(_tableName);
         let list=table.index('key');
         let request=list.get(_keyName);
         request.onsuccess=function(_e){
@@ -146,6 +183,7 @@ let headLoader,localDB;
       this.getItem=getItem;
     }
   };
+  //_global.localDB=localDB;
   headLoader=function(_val){
     let val=_val || {};
     this.dataDir=val.dataDir || "";
@@ -160,12 +198,6 @@ let headLoader,localDB;
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
     let that=this;//关键字避嫌
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
-    let getCacheVersion=function(_hours){
-      let newDate=new Date();
-      let hours=_hours || 2;//每天中的每两个小时为一个值
-      hours=Math.min(24,hours);
-      return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/hours);
-    };
     let standardized=function(_arr){
       let reArr=[];
       let thisStr="";
@@ -211,7 +243,7 @@ let headLoader,localDB;
       };
     };
     let setCache=function(_cacheKey,_value){
-      thisDB.setItem("data",thisHex.encode(_cacheKey),_value).then(null);
+      that.db.setItem("data",thisHex.encode(_cacheKey),_value).then(null);
     };
     let getUrl=function(_module,_type,_ext){
       if(that.dataActive && ["js","css"].includes(_type)) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace("."+(_ext || _type),"")+min)+"."+(_ext || _type);//.js不一定是最后的字符
@@ -229,7 +261,7 @@ let headLoader,localDB;
         xhr.onreadystatechange=function(){
           if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
             //文件修改后etag会变化
-            _r(xhr.getResponseHeader("etag")||xhr.getResponseHeader("last-modified")||"");
+            _r(xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "");
           }
         };
         xhr.onerror=_e=>_rj(_e);
@@ -242,7 +274,7 @@ let headLoader,localDB;
         //1：缓存已到期，但服务器文件未变化，继续使用缓存
         //2：缓存已到期或不存在，需要从服务器获取
         if(!_value) return _r(2);
-        if(_value.version!==localDBOption.getVersion()){//缓存过期
+        if(_value.version!==getCacheVersion()){//缓存过期
           //先读取文件头的etag判断文件是否已修改
           if(_value.etag==="") _r(2);
           else{
@@ -281,15 +313,15 @@ let headLoader,localDB;
             xhr.send();
             xhr.onreadystatechange=function(){
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-                let content=xhr.responseText||"";
+                let content=xhr.responseText || "";
                 if(_fileType==="css"){
                   //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
-                  content=content.replace(/\[v]/g,mediaCacheVersion);
+                  content=content.replace(/\[v]/g,cacheVersion);
                 }
                 //注意某些服务器不会返回etag或者last-modified
                 setCache(cacheKey,{
                   value:content,
-                  etag:xhr.getResponseHeader("etag")||xhr.getResponseHeader("last-modified")||""
+                  etag:xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
                 });
                 mediaLength++;//增加一次资源加载次数
                 _r("success");
@@ -298,7 +330,7 @@ let headLoader,localDB;
           }
         };
         //getCache(cacheKey).then(runThis);
-        thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+        that.db.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
           value=_value;
           getStatus(value,url).then(_v=>runThis(_v)).catch(_v=>console.error(_v));
         });
@@ -382,7 +414,7 @@ let headLoader,localDB;
           let runThis=function(_resolve){
             cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min).replace(/\./g,'_');
             //getCache(cacheKey).then(_v=>code.push(_v));
-            thisDB.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+            that.db.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
               code[_k]=_value.value;
               _resolve(true);
             });
@@ -452,28 +484,16 @@ let headLoader,localDB;
       return new Promise(that.multiLoad ? promiseAll : oneByOne);//线上并行，线下串行（可调试）
     };//加载
     let thisHex=new hex();
-    let localDBOption={
-      database:"headLoaderDB",
-      tables:{
-        //        js:["key","value","version"],
-        //        css:["key","value","version"],
-        //        font:["key","value","version"],
-        //        icon:["key","value","version"],
-        //        image:["key","value","version"],
-        //        video:["key","value","version"],
-        data:["key","value","version"]
-      },
-      getVersion:getCacheVersion
-    };
-    let thisDB=new localDB(localDBOption);
+    this.db=new localDB();
     this.run=function(){
       (async()=>{
-        await thisDB.open();
+        //let ct=new Date().getTime().toString();
+        //console.time(ct);
+        await that.db.open();
         that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
         that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
         that.dataFont=standardized(that.dataFont.join(",").replace(/_js/g,modDir).split(","));
         cacheVersion=getCacheVersion(dataLifecycle);
-        mediaCacheVersion=getCacheVersion(24);//不论什么环境css文件中的静态文件缓存24小时更新一次,例如图片,字体等
         let loadAllCallback=function(){
           if(that.showLog) showLog();
           if(typeof (that.callback)==="function") that.callback.call(false);
@@ -482,10 +502,13 @@ let headLoader,localDB;
         loadThese(that.dataCss,"css");
         loadThese(that.dataFont,"font");
         await loadThese(that.dataJs,"js");
+        await that.db.close();
+        //console.timeEnd(ct);
         loadAllCallback();
       })();
     };
   };
+  //_global.headLoader=headLoader;
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
   let allScript=document.getElementsByTagName("script");
   let thisScript;
@@ -496,7 +519,6 @@ let headLoader,localDB;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
   let dataLifecycle=2;//缓存周期默认为2个小时
   let cacheVersion="";//每项缓存文件的缓存版本
-  let mediaCacheVersion="";//css文件中的静态文件的缓存版本
   let mediaLength=0;//文件个数，用于统计页面加载多少个文件
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
   for(let i=0; i<allScript.length; i++){
@@ -558,4 +580,4 @@ let headLoader,localDB;
   thisLoader.dataLifecycle=dataLifecycle;
   //thisLoader.showLog=true;//是否显示统计
   thisLoader.run();
-})(window.location.origin===window.top.location.origin ? window.top : window);
+})((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);
