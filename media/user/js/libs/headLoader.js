@@ -1,6 +1,7 @@
 ﻿/**
  * headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。
- * @global : headLoader
+ * localDB用于对indexDB增删改查的操作，主要配合headLoader缓存资源，当然也可以单独使用
+ * @global : headLoader,localDB
  * @author: 宇哥 baiyukey@qq.com
  * @param {String} [this.dataDir] -资源路径
  * @param {Array} [this.dataCss] -CSS模块列表
@@ -11,7 +12,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.8
+ * @version : 2.0.9
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -27,7 +28,7 @@ let headLoader,localDB;
   let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   let getCacheVersion=function(_hours){
     let newDate=new Date();
-    let hours=_hours || 2;//每天中的每两个小时为一个值
+    let hours=_hours || 12;//每天中的每12个小时为一个值
     hours=Math.min(24,hours);
     return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/hours);
   };
@@ -96,7 +97,7 @@ let headLoader,localDB;
         };
       });
     };
-    const closeDB=function(){
+    const closeDB=function(_waitTime){
       if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
       return new Promise((_resolve,_reject)=>{
         let runThis=function(){
@@ -109,12 +110,12 @@ let headLoader,localDB;
           //if(reLog) console.log(`${option.database}已关闭`);
           _resolve("success");
         };
-        _global.waitCloseLocalDB=setTimeout(runThis,3000);
+        _global.waitCloseLocalDB=setTimeout(runThis,_waitTime || 3000);
       });
     };
     const deleteDB=async function(){
       if(!_global.localDBResult) return console.warn(`目前还没有库${option.database}`);
-      await closeDB();
+      await closeDB(0);
       _global.indexedDB.deleteDatabase(option.database);
       if(reLog) console.log(`${option.database}已删除`);
     };
@@ -190,6 +191,7 @@ let headLoader,localDB;
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
+    this.dataHtml=val.dataHtml || [];
     this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认2 | 可选项
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
@@ -247,10 +249,11 @@ let headLoader,localDB;
     };
     let getUrl=function(_module,_type,_ext){
       if(that.dataActive && ["js","css"].includes(_type)) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace("."+(_ext || _type),"")+min)+"."+(_ext || _type);//.js不一定是最后的字符
-      return `${that.dataDir}${_type}/${_module.split("|")[0]}.${_ext || _type}`;
+      return `${that.dataDir}${_module.split("|")[0]}.${_ext || _type}`;
     };
     let getCacheKey=function(_module,_type){
-      return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min).replace(/\./g,'_');
+      if(["js","css"].includes(_type)) return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min);
+      return ((that.dataDir+_module.split("|")[0]).replace("."+_type,""));
     };
     //获取文件头信息
     let getEtag=function(url){
@@ -274,7 +277,7 @@ let headLoader,localDB;
         //1：缓存已到期，但服务器文件未变化，继续使用缓存
         //2：缓存已到期或不存在，需要从服务器获取
         if(!_value) return _r(2);
-        if(_value.version!==getCacheVersion()){//缓存过期
+        if(_value.version!==that.cacheVersion){//缓存过期
           //先读取文件头的etag判断文件是否已修改
           if(_value.etag==="") _r(2);
           else{
@@ -289,14 +292,14 @@ let headLoader,localDB;
         }
       });
     };
-    let loadJsCss=function(_module,_fileType){
+    let loadXHR=function(_module,_fileType){
       return new Promise(_r=>{
         if(isLink(_module)){
           if(_fileType==="js") linkJs(_module);
           else if(_fileType==="css") linkCss(_module);
           return _r("success");
         }
-        let url=getUrl(_module,_fileType)+"?v="+cacheVersion;//.js不一定是最后的字符
+        let url=getUrl(_module,_fileType)+"?v="+that.cacheVersion;//.js不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
         let value;
         let runThis=function(_io){
@@ -316,14 +319,14 @@ let headLoader,localDB;
                 let content=xhr.responseText || "";
                 if(_fileType==="css"){
                   //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
-                  content=content.replace(/\[v]/g,cacheVersion);
+                  content=content.replace(/\[v]/g,that.cacheVersion);
                 }
                 //注意某些服务器不会返回etag或者last-modified
                 setCache(cacheKey,{
                   value:content,
                   etag:xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
                 });
-                mediaLength++;//增加一次资源加载次数
+                if(that.showLog) mediaLength++;//增加一次资源加载次数
                 _r("success");
               }
             };
@@ -335,11 +338,11 @@ let headLoader,localDB;
           getStatus(value,url).then(_v=>runThis(_v)).catch(_v=>console.error(_v));
         });
       });
-    };//加载js
+    };//XHR类型加载器
     let loadFont=function(_module){
       //FontFace目前属于实验功能
       return new Promise(async _r=>{
-        let url=getUrl(_module,"fonts","woff")+"?v="+cacheVersion;
+        let url=getUrl(_module,"fonts","woff")+"?v="+that.cacheVersion;
         if(typeof (FontFace)!=="function") return new Promise(_resolve=>_resolve("success"));
         const newFont=new FontFace("elfRound","url("+url+")");
         await newFont.load();
@@ -385,7 +388,7 @@ let headLoader,localDB;
       let thisTag=document.createElement("script");
       //link.type="text/javascript";
       setAttribute(thisTag,_url.split("|").splice(1));
-      thisTag.src=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".js","")+min+".js?v="+cacheVersion;
+      thisTag.src=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".js","")+min+".js?v="+that.cacheVersion;
       head.appendChild(thisTag);
     };//往页面引入js
     let linkCss=function(_url){
@@ -396,7 +399,7 @@ let headLoader,localDB;
       thisTag.type="text/css";
       thisTag.rel="stylesheet";
       thisTag.media="screen";
-      thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?v="+cacheVersion;
+      thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?v="+that.cacheVersion;
       head.appendChild(thisTag);
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
@@ -406,13 +409,13 @@ let headLoader,localDB;
           "JS":writeJs,
           "CSS":writeCss
         }[_fileType.toUpperCase()];
-        if(!writeCode) return _resolve("refuse this method.");
+        if(!writeCode) return _resolve("页面写入仅支持js、css.");
         let code={};
         let Promises=[];
         _modules.forEach((_k)=>{
           code[_k]=null;
           let runThis=function(_resolve){
-            cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min).replace(/\./g,'_');
+            cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
             //getCache(cacheKey).then(_v=>code.push(_v));
             that.db.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
               code[_k]=_value.value;
@@ -422,12 +425,12 @@ let headLoader,localDB;
           Promises.push(new Promise(runThis));
         });
         Promise.all(Promises).then(()=>{
-          writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+cacheVersion,Object.values(code).join(_fileType==='js' ? ';' : ' '));
+          writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+that.cacheVersion,Object.values(code).join(_fileType==='js' ? ';' : ' '));
           _resolve("success");
         });
       });
     };
-    let showLog=function(){
+    let logData=function(){
       let thisDuration=new Date().getTime()-startTime;
       _global.headLoaderHistory=typeof (_global.headLoaderHistory)!=="undefined" ? _global.headLoaderHistory : [];//用于统计当前框架共加载文件的总时长
       if(typeof _global.showLogTimeout!=="undefined") clearTimeout(_global.showLogTimeout);
@@ -447,11 +450,12 @@ let headLoader,localDB;
         return new Promise(_resolve=>_resolve("success"));
       }
       let load={
-        "JS":loadJsCss,
-        "CSS":loadJsCss,
-        "FONT":loadFont
+        "JS":loadXHR,
+        "CSS":loadXHR,
+        "FONT":loadFont,
+        "HTML":loadXHR
       }[_fileType.toUpperCase()];
-      //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appcacheVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
+      //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appthat.cacheVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
       let oneByOne=async function(_resolve){
         let i=0;
         let runThis=async function(){
@@ -486,26 +490,23 @@ let headLoader,localDB;
     let thisHex=new hex();
     this.db=new localDB();
     this.run=function(){
-      (async()=>{
-        //let ct=new Date().getTime().toString();
-        //console.time(ct);
+      that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
+      that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
+      that.dataFont=standardized(that.dataFont);
+      that.dataHtml=standardized(that.dataHtml);
+      that.cacheVersion=getCacheVersion(dataLifecycle);//每项缓存文件的缓存版本
+      (async function(){
         await that.db.open();
-        that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
-        that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
-        that.dataFont=standardized(that.dataFont.join(",").replace(/_js/g,modDir).split(","));
-        cacheVersion=getCacheVersion(dataLifecycle);
-        let loadAllCallback=function(){
-          if(that.showLog) showLog();
-          if(typeof (that.callback)==="function") that.callback.call(false);
-        };
         //先加载dataCss，后加载dataJs
-        loadThese(that.dataCss,"css");
-        loadThese(that.dataFont,"font");
+        await loadThese(that.dataCss,"css");
+        await loadThese(that.dataFont,"font");
         await loadThese(that.dataJs,"js");
+        await loadThese(that.dataHtml,"html");
+        if(that.showLog) logData();
+        if(typeof (that.callback)==="function") that.callback.call(false);
         await that.db.close();
-        //console.timeEnd(ct);
-        loadAllCallback();
       })();
+      //console.timeEnd(ct);
     };
   };
   //_global.headLoader=headLoader;
@@ -514,12 +515,12 @@ let headLoader,localDB;
   let thisScript;
   let dataJs=[],
     dataCss=[],
-    dataFont=[];
+    dataFont=[],
+    dataHtml=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
-  let dataLifecycle=2;//缓存周期默认为2个小时
-  let cacheVersion="";//每项缓存文件的缓存版本
-  let mediaLength=0;//文件个数，用于统计页面加载多少个文件
+  let dataLifecycle=12;//缓存周期默认为12个小时
+  let mediaLength=1;//文件个数，用于统计页面加载多少个文件
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
   for(let i=0; i<allScript.length; i++){
     if(allScript[i].hasAttribute("src") && allScript[i].getAttribute("src").indexOf(atob("aGVhZExvYWRlci4="))>=0){
@@ -568,6 +569,9 @@ let headLoader,localDB;
   if(thisScript.hasAttribute("data-font")){
     dataFont=thisScript.getAttribute("data-font").split(",");//.replace(/_js/g,modDir);
   }
+  if(thisScript.hasAttribute("data-html")){
+    dataHtml=thisScript.getAttribute("data-html").split(",");//.replace(/_js/g,modDir);
+  }
   else{
     if(reLog) console.log('%c友情提示:script标签未设置"data-js"属性',"color:#69F;");
   }
@@ -577,7 +581,8 @@ let headLoader,localDB;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.dataFont=dataFont;
+  thisLoader.dataHtml=dataHtml;
   thisLoader.dataLifecycle=dataLifecycle;
-  //thisLoader.showLog=true;//是否显示统计
+  thisLoader.showLog=false;//是否显示统计
   thisLoader.run();
 })((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);

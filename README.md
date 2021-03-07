@@ -5,12 +5,12 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.0.7,他有如下特点：
+### 当前版本为v2.0.9,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
     2.可实现资源预加载功能；
     3.资源热加载，即随需随加载，而不需要刷新页面；
     4.当页面刷新或者重新载入时，会从缓存中优先读取，缩短响应时间，减少页面载入时的闪烁；
-    5.缓存生命周期可自定义，默认每两个小时更新一次，即能复用本地缓存又能保证代码的时效性；
+    5.缓存生命周期可自定义，默认每12个小时更新一次，即能复用本地缓存又能保证代码的时效性；
     6.缓存生命周期结束后，如果服务器文件未修改，继续使用本地缓存，进一步减少网络流量提高效率；
     7.生产环境自动加载文档的.min版本，开发环境加载正常版本，开发及上线一气呵成，减少维护成本；
     8.生产环境并行加载文档加快速度，开发环境串行加载利于观察程序运行；
@@ -46,7 +46,8 @@
     loader.dataDir="/media/user/";
     loader.dataCss=['public/global','public/color','other','_css'];
     loader.dataJs=['libs/jquery-1.8.0','libs/jquery.elfAlert','_js'];
-    loader.dataLifeCycle=2;
+    loader.dataHtml=['/a.html','/b.html'];
+    loader.dataLifeCycle=12;
     loader.dataActive=false;
     loader.preload=0;
     loader.callback=function(){console.log("headLoader is done!")};   //外部命令法可以定义回调函数
@@ -60,7 +61,8 @@
     dataDir:"/media/users/",
     dataCss:['public/global','public/color','other','_css'],
     dataJs:['libs/jquery-1.8.0','libs/jquery.elfAlert','_js'],
-    dataLifeCycle:2,
+    dataHtml:['/a.html','/b.html'],
+    dataLifeCycle:12,
     dataActive:false,
     preload:0,
     callback:function(){console.log("headLoader is done!")}   //外部命令法可以定义回调函数
@@ -80,6 +82,7 @@
         data-dir  相当于 dataDir
         data-css 相当于 dataCss
         data-js    相当于 dataJs
+        data-html    相当于 dataHtml
         data-lifecycle    相当于 dataLifecycle
         data-active    相当于 dataActive
     6.如果想预加载资源以备后面的页面使用时，可以设置preload参数为1，1为预加载功能开启，0为加载后立即应用于当前页面，默认为0
@@ -94,11 +97,12 @@
     6.当data-css包含"_css"模块时,代表headLoader自动加载页面css,例如当页面为127.0.0.1/index/index.html,则对应的css为127.0.0.1/css/index/index.css;
     7.当data-js包含"_js"模块时,代表headLoader自动加载页面js,例如当页面为127.0.0.1/index/index.html,则对应的js为127.0.0.1/js/index/index.js;
     8.当需要给加载的css或js标签添加属性时,直接在模块地址后追加"_js|属性名=属性值|属性名=属性值|...",例如loader.dataJs=['_js|id=abc'];
-    9.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,版本每两个小时更新一次;
+    9.如果是公有IP或者非localhost,所加载的文档会直接从localStorage中读取,版本每12个小时更新一次;
     10.如果是私有IP或者localhost开发环境,每次刷新页面都会重新加载资源,这样做是为了方便开发调试,由此加载速度较慢,请知晓;
     11.当使用headLoader.js时,在本地开发环境下会以console.log()命令友情提示,如果不希望出现提示请使用压缩文件headLoader.min.js.
     12.当模块为完整的http地址时,例如loader.dataJs=['http://dwz.cn/headLoader'],将直接创建标签并加载,不进行任何处理.
-    13.在引入headLoader.js时如果添加“data-active=true”属性参数时，或者命令行语法在给实例添加dataActive并置为true，此时开发环境正常加载,但是线上环境会将“/js/”目录切换为"/js.min/"目录，并将文件扩展名".js"改为".min.js"（CSS同理）。例如“/media/js/a.js”在线上环境会自动切换为“/media/js.min/a.min.js”
+    13.在引入headLoader.js时如果添加“data-active=true”属性参数时，或者命令行语法在给实例添加dataActive并置为true，此时开发环境正常加载,但是线上环境会将“/js/”目录切换为"/js.min/"目录，并将文件扩展名".js"改为".min.js"（CSS同理）。例如“/media/js/a.js”在线上环境会自动切换为“/media/js.min/a.min.js”;
+    14.对于html文档，加载后不会写入页面，而是放入到缓存中以备使用。
 更多...
 --
    欢迎访问我的个人网站查看更多 [UI精灵](http://www.uielf.com/headLoader/) 
