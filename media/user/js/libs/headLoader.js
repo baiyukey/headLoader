@@ -12,7 +12,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.9
+ * @version : 2.0.93
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -26,12 +26,37 @@ let headLoader,localDB;
   }
   else return alert('浏览器不支持XMLHttpRequest，请使用现代浏览器，例如chrome等。');
   let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
-  let getCacheVersion=function(_hours){
-    let newDate=new Date();
-    let hours=_hours || 12;//每天中的每12个小时为一个值
-    hours=Math.min(24,hours);
-    return min==="" ? ""+newDate.getTime() : ""+(newDate.getMonth()+1)+newDate.getDate()+Math.ceil((newDate.getHours()+1)/hours);
+  let getVersion=function(_hours){
+    let newTime=new Date().getTime()+28800000;//new Date(0) 相当于 1970/1/1 08:00:00
+    let stepTime=_hours>0 ? 1000*60*60*_hours : 1;//默认1970年以来每_hours个小时为一个值
+    return String(new Date(newTime-newTime%stepTime+stepTime).getTime()-28800000);
   };
+  let hex=function(){
+    let bet="";
+    for(let i=48; i<=122; i++){
+      if((i>=58 && i<=64) || (i>=91 && i<=96)) continue;
+      bet+=String.fromCharCode(i);
+    }
+    bet=bet.replace(/[aeiouAEIOU01]/g,"");
+    bet=bet.slice(0,18)+"$-_+!*"+bet.slice(18);
+    let betLength=bet.length;
+    let activeIndex=location.host.length;
+    let chatAt=-1;
+    let url='';
+    let returnUrl='';
+    this.encode=function(_url){
+      url=encodeURIComponent(_url).replace(/\./g,"&dot");
+      returnUrl='';
+      chatAt= -1;
+      for(let i=0; i<url.length; i++){
+        chatAt=bet.indexOf(url.charAt(i));
+        //str+=(_alphabet.indexOf(_url[i])>0 ? _alphabet.indexOf(_url[i]) : _url.charCodeAt(i));
+        returnUrl+=chatAt<0 ? url.charAt(i) : bet.charAt((chatAt+activeIndex)%betLength);
+      }
+      return returnUrl;
+    };
+  };
+  let thisHex=new hex();
   localDB=function(_option){
     /**
      * 通过indexedDB创建站点缓存仓库
@@ -40,7 +65,7 @@ let headLoader,localDB;
      * @param {Object} [_option.tables] 表及字段名称,例如{js:["key","value","version"],...}
      */
     let option={
-      database:"headLoaderDB",
+      database:"localDB",
       tables:{
         //        js:["key","value","version"],
         //        css:["key","value","version"],
@@ -50,7 +75,7 @@ let headLoader,localDB;
         //        video:["key","value","version"],
         data:["key","value","version"]
       },
-      version:getCacheVersion
+      version:getVersion(min===".min" ? 24 : 0)
     };
     Object.assign(option,_option);
     _global.localDBResult=_global.localDBResult || null;
@@ -89,8 +114,8 @@ let headLoader,localDB;
               let objectStore=_global.localDBResult.createObjectStore(_tableName,{keyPath:"key"});
               //非关系型数据库的特点，表中的每个字段存为一个子表，美其名曰“索引”(createIndex)
               //在往子表里加数据时只需增加到Value字段,所以Key字段的值引用Value中的某个属性值即可，也可以让它自动生成
-              //createIndex3个参数：子表名称，Key字段的值引用Value字段的哪个属性，Key字段的值是否唯一
-              option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,"key",{unique:true}));
+              //createIndex3个参数：主键，索引属性，主键是否唯一
+              option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,["key"],{unique:true}));
             }
           }
           _e.target.transaction.oncomplete=()=>_resolve(_global.localDBResult);
@@ -121,59 +146,72 @@ let headLoader,localDB;
     };
     /**
      * 定义某条数据
-     * @param {String} [_tableName] -表名
-     * @param {String} [_keyName] -键名
-     * @param {...} [_value] -键值
      * @return new Promise()
      */
-    const setItem=function(_tableName,_keyName,_value){
+    const setItem=function(){
       //如果数据key已存在，覆盖原有数据，否则写入
+      let defaultArgument={
+        tableName:'data',
+        key:'',//主键
+        value:null,//读取文件获取的内容
+        etag:''//读取文件后从服务器返回的etag，用于后续判断文件是否更改
+      };
+      if(typeof (arguments[0])==="object"){
+        /*例如：
+         setItem({
+         tableName:'data',//可省略，默认data
+         key:'/a/color.css',
+         value:'a{color:red}',
+         etag:""
+         })
+         */
+        Object.assign(defaultArgument,arguments[0]);
+      }
+      else{
+        //简写时只有两个参数，_key,_value
+        //例如：setItem("/a/color.css",'a{color:red}')
+        defaultArgument.key=arguments[0] || defaultArgument.key;
+        defaultArgument.value=arguments[1] || defaultArgument.value;
+      }
       return new Promise(async(_resolve,_reject)=>{
         await openDB();
-        let thisTable=_global.localDBResult.transaction(_tableName,"readwrite").objectStore(_tableName);
         let thisData={
-          key:_keyName,
-          value:_value.value ? _value.value : _value,
-          etag:_value.etag,
-          version:option.version()
+          key:(min===".min" ? thisHex.encode(defaultArgument.key) : defaultArgument.key),
+          value:defaultArgument.value,
+          etag:defaultArgument.etag,
+          version:option.version
         };
-        let getMethod=function(__resolve,__reject){
-          let thisKey=thisTable.index("key").get(_keyName);
-          thisKey.onsuccess=(_e)=>{
-            __resolve(_e.target.result ? "put" : "add");
-          };
-          thisKey.onerror=()=>__resolve("add");
-        };
-        new Promise(getMethod).then((_method)=>{
-          let setData=thisTable[_method](thisData);
-          setData.onsuccess=function(){
-            //console.log(`${_keyName}数据${_method==="add" ? "写入" : "更新"}成功`);
-            _resolve("success");
-          };
-          setData.onerror=function(_e){
-            _reject(_e);
-          };
+        let method="add";
+        await getItem(defaultArgument.key).then(_v=>{
+          method=_v ? "put" : "add";
+        }).catch(_v=>{
+          method="add";
         });
+        let thisTable=_global.localDBResult.transaction(defaultArgument.tableName,"readwrite").objectStore(defaultArgument.tableName);
+        let setData=thisTable[method](thisData);
+        setData.onsuccess=function(){
+          //console.log(`${thisData.key}数据(${method})${method==="add" ? "写入" : "更新"}成功`);
+          _resolve(thisData);
+        };
+        setData.onerror=_e=>_reject(_e);
       });
     };
     /**
      * 获取某条数据
-     * @param {String} [_tableName] -表名
-     * @param {String} [_keyName] -键名
+     * @param {String} [_key] -键名
+     * @param {String} [_tableName] -表名 可选，默认“data”
      * @return new Promise()
      */
-    const getItem=async function(_tableName,_keyName){
-      await openDB();
-      return new Promise((_resolve,_reject)=>{
-        let table=_global.localDBResult.transaction(_tableName,'readonly').objectStore(_tableName);
+    const getItem=function(_key,_tableName){
+      return new Promise(async(_resolve,_reject)=>{
+        await openDB();
+        let tableName=_tableName || "data";
+        let table=_global.localDBResult.transaction(tableName,'readonly').objectStore(tableName);
         let list=table.index('key');
-        let request=list.get(_keyName);
-        request.onsuccess=function(_e){
-          _resolve(request.result);
-        };
-        request.onerror=function(_e){
-          _reject(_e);
-        };
+        let keyName=(min===".min" ? thisHex.encode(_key) : _key);
+        let request=list.get(IDBKeyRange.only([keyName]));
+        request.onsuccess=_e=>_resolve(_e.target.result);//[注意！！！]_e.target.result有可能会返回undefined
+        request.onerror=_e=>_reject(_e);
       });
     };
     if(dbAble){
@@ -192,7 +230,7 @@ let headLoader,localDB;
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
     this.dataHtml=val.dataHtml || [];
-    this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认2 | 可选项
+    this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
@@ -200,11 +238,11 @@ let headLoader,localDB;
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
     let that=this;//关键字避嫌
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
-    let standardized=function(_arr){
+    let standardized=function(_arr,_type){
       let reArr=[];
       let thisStr="";
       for(let i=0; i<_arr.length; i++){
-        thisStr=_arr[i].replace(/^(\s*)|(\s*)$/g,"");//去前后空格
+        thisStr=_arr[i].replace(/^(\s*)|(\s*)$/g,"").replace(new RegExp(`(.${_type})$`),"");//去前后空格及扩展名
         if(thisStr.length!==0 && reArr.indexOf(thisStr)<0) reArr.push(thisStr);//去重
       }
       return reArr;
@@ -219,41 +257,13 @@ let headLoader,localDB;
     if(typeof _global["headLoaderCache"]==="undefined"){
       _global["headLoaderCache"]={};
     }
-    let hex=function(){
-      let bet="";
-      for(let i=48; i<=122; i++){
-        if((i>=58 && i<=64) || (i>=91 && i<=96)) continue;
-        bet+=String.fromCharCode(i);
-      }
-      bet=bet.replace(/[aeiouAEIOU01]/g,"");
-      bet=bet.slice(0,18)+"$-_+!*"+bet.slice(18);
-      let betLength=bet.length;
-      let activeIndex=location.host.length;
-      let chatAt=-1;
-      let url='';
-      let returnUrl='';
-      this.encode=function(_url){
-        url=encodeURIComponent(_url).replace(/\./g,"&dot");
-        returnUrl='';
-        chatAt= -1;
-        for(let i=0; i<url.length; i++){
-          chatAt=bet.indexOf(url.charAt(i));
-          //str+=(_alphabet.indexOf(_url[i])>0 ? _alphabet.indexOf(_url[i]) : _url.charCodeAt(i));
-          returnUrl+=chatAt<0 ? url.charAt(i) : bet.charAt((chatAt+activeIndex)%betLength);
-        }
-        return returnUrl;
-      };
-    };
-    let setCache=function(_cacheKey,_value){
-      that.db.setItem("data",thisHex.encode(_cacheKey),_value).then(null);
-    };
     let getUrl=function(_module,_type,_ext){
       if(that.dataActive && ["js","css"].includes(_type)) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace("."+(_ext || _type),"")+min)+"."+(_ext || _type);//.js不一定是最后的字符
       return `${that.dataDir}${_module.split("|")[0]}.${_ext || _type}`;
     };
     let getCacheKey=function(_module,_type){
-      if(["js","css"].includes(_type)) return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min);
-      return ((that.dataDir+_module.split("|")[0]).replace("."+_type,""));
+      if(["js","css"].includes(_type)) return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min)+"."+_type;
+      return (that.dataDir+_module.split("|")[0])+"."+_type;//.replace("."+_type,"");//html
     };
     //获取文件头信息
     let getEtag=function(url){
@@ -277,7 +287,7 @@ let headLoader,localDB;
         //1：缓存已到期，但服务器文件未变化，继续使用缓存
         //2：缓存已到期或不存在，需要从服务器获取
         if(!_value) return _r(2);
-        if(_value.version!==that.cacheVersion){//缓存过期
+        if(_value.version!==that.requestVersion){//缓存过期
           //先读取文件头的etag判断文件是否已修改
           if(_value.etag==="") _r(2);
           else{
@@ -299,32 +309,38 @@ let headLoader,localDB;
           else if(_fileType==="css") linkCss(_module);
           return _r("success");
         }
-        let url=getUrl(_module,_fileType)+"?v="+that.cacheVersion;//.js不一定是最后的字符
+        let url=getUrl(_module,_fileType)+"?v="+that.requestVersion;//.js不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
-        let value;
-        let runThis=function(_io){
-          if(_io===0){
+        let runThis=async function(_io,_value){
+          let value=_value;
+          if(_io===0){//0：缓存未到期
             _r("success");
           }
-          else if(_io===1){
-            setCache(cacheKey,value);
+          else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
+            //setCache(cacheKey,value);
+            await that.db.setItem({
+              "key":cacheKey,
+              "value":value.value,
+              "etag":value.etag
+            });
             _r("success");
           }
-          else if(_io===2){
+          else if(_io===2){//2：缓存已到期或不存在，需要从服务器获取
             let xhr=new XHR();
             xhr.open("GET",url,true);
             xhr.send();
-            xhr.onreadystatechange=function(){
+            xhr.onreadystatechange=async function(){
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
                 let content=xhr.responseText || "";
                 if(_fileType==="css"){
                   //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
-                  content=content.replace(/\[v]/g,that.cacheVersion);
+                  content=content.replace(/\[v]/g,that.requestVersion);
                 }
                 //注意某些服务器不会返回etag或者last-modified
-                setCache(cacheKey,{
-                  value:content,
-                  etag:xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
+                await that.db.setItem({
+                  "key":cacheKey,
+                  "value":content,
+                  "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
                 });
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 _r("success");
@@ -332,17 +348,15 @@ let headLoader,localDB;
             };
           }
         };
-        //getCache(cacheKey).then(runThis);
-        that.db.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
-          value=_value;
-          getStatus(value,url).then(_v=>runThis(_v)).catch(_v=>console.error(_v));
+        that.db.getItem(cacheKey).then((_value)=>{
+          getStatus(_value,url).then(_status=>runThis(_status,_value)).catch(_err=>console.error(_err));
         });
       });
     };//XHR类型加载器
     let loadFont=function(_module){
       //FontFace目前属于实验功能
       return new Promise(async _r=>{
-        let url=getUrl(_module,"fonts","woff")+"?v="+that.cacheVersion;
+        let url=getUrl(_module,"fonts","woff")+"?v="+that.requestVersion;
         if(typeof (FontFace)!=="function") return new Promise(_resolve=>_resolve("success"));
         const newFont=new FontFace("elfRound","url("+url+")");
         await newFont.load();
@@ -388,7 +402,7 @@ let headLoader,localDB;
       let thisTag=document.createElement("script");
       //link.type="text/javascript";
       setAttribute(thisTag,_url.split("|").splice(1));
-      thisTag.src=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".js","")+min+".js?v="+that.cacheVersion;
+      thisTag.src=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".js","")+min+".js?v="+that.requestVersion;
       head.appendChild(thisTag);
     };//往页面引入js
     let linkCss=function(_url){
@@ -399,11 +413,11 @@ let headLoader,localDB;
       thisTag.type="text/css";
       thisTag.rel="stylesheet";
       thisTag.media="screen";
-      thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?v="+that.cacheVersion;
+      thisTag.href=_url.indexOf("http")===0 ? _url.split("|")[0] : _url.split("|")[0].replace(".css","")+min+".css?v="+that.requestVersion;
       head.appendChild(thisTag);
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
-      return new Promise((_resolve)=>{
+      return new Promise((_resolve,_reject)=>{
         let cacheKey;
         let writeCode={
           "JS":writeJs,
@@ -413,21 +427,21 @@ let headLoader,localDB;
         let code={};
         let Promises=[];
         _modules.forEach((_k)=>{
-          code[_k]=null;
-          let runThis=function(_resolve){
-            cacheKey=(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
+          code[_k]='';
+          let runThis=function(_resolve,_reject){
+            cacheKey=getCacheKey(_k,_fileType);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
             //getCache(cacheKey).then(_v=>code.push(_v));
-            that.db.getItem("data",thisHex.encode(cacheKey)).then((_value)=>{
+            that.db.getItem(cacheKey).then((_value)=>{
               code[_k]=_value.value;
               _resolve(true);
-            });
+            }).catch(_err=>_reject(_err));
           };
           Promises.push(new Promise(runThis));
         });
         Promise.all(Promises).then(()=>{
-          writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+that.cacheVersion,Object.values(code).join(_fileType==='js' ? ';' : ' '));
+          writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+that.requestVersion,Object.values(code).join(_fileType==='js' ? ';' : ' '));
           _resolve("success");
-        });
+        }).catch(_err=>_reject(_err));
       });
     };
     let logData=function(){
@@ -455,7 +469,7 @@ let headLoader,localDB;
         "FONT":loadFont,
         "HTML":loadXHR
       }[_fileType.toUpperCase()];
-      //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appthat.cacheVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
+      //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appthat.requestVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
       let oneByOne=async function(_resolve){
         let i=0;
         let runThis=async function(){
@@ -487,14 +501,13 @@ let headLoader,localDB;
       };//并行
       return new Promise(that.multiLoad ? promiseAll : oneByOne);//线上并行，线下串行（可调试）
     };//加载
-    let thisHex=new hex();
-    this.db=new localDB();
+    this.requestVersion=getVersion(this.dataLifecycle && this.dataLifecycle>0 ? this.dataLifecycle : (min===".min" ? 2 : 0));
+    this.db=new localDB({version:this.requestVersion});
     this.run=function(){
-      that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","));
-      that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","));
-      that.dataFont=standardized(that.dataFont);
-      that.dataHtml=standardized(that.dataHtml);
-      that.cacheVersion=getCacheVersion(dataLifecycle);//每项缓存文件的缓存版本
+      that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","),"css");
+      that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","),"js");
+      that.dataFont=standardized(that.dataFont,"");
+      that.dataHtml=standardized(that.dataHtml,"html");
       (async function(){
         await that.db.open();
         //先加载dataCss，后加载dataJs
@@ -519,7 +532,7 @@ let headLoader,localDB;
     dataHtml=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
-  let dataLifecycle=12;//缓存周期默认为12个小时
+  let dataLifecycle;//缓存周期
   let mediaLength=1;//文件个数，用于统计页面加载多少个文件
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
   for(let i=0; i<allScript.length; i++){
@@ -546,7 +559,7 @@ let headLoader,localDB;
     dataLifecycle=Number(thisScript.getAttribute("data-lifecycle"));
   }
   else{
-    if(reLog) console.log(`%c友情提示:script标签未设置"data-lifecycle"属性,默认为${dataLifecycle}小时.`,"color:#69F;");
+    if(reLog) console.log(`%c友情提示:script标签未设置"data-lifecycle"属性,默认为0(开发环境)或24小时(线上环境）.`,"color:#69F;");
   }
   if(thisScript.hasAttribute("data-dir")){
     dataDir=thisScript.getAttribute("data-dir");
