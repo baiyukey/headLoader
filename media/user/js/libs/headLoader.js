@@ -12,19 +12,16 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.93
+ * @version : 2.0.94
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
 (function(_global){
-  let XHR=new Function();
-  if(_global.XMLHttpRequest){
-    XHR=_global.XMLHttpRequest;
-  }
-  else if(_global.ActiveXObject){
-    XHR=_global.ActiveXObject("Microsoft.XMLHTTP");
-  }
-  else return alert('浏览器不支持XMLHttpRequest，请使用现代浏览器，例如chrome等。');
+  let error=function(){
+    document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
+  };
+  if(!_global.Promise) return _global.onload=error;//所有IE均不支持
+  let XHR=_global.XMLHttpRequest;
   let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   let getVersion=function(_hours){
     let newTime=new Date().getTime()+28800000;//new Date(0) 相当于 1970/1/1 08:00:00
@@ -236,7 +233,6 @@ let headLoader,localDB;
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
-    let that=this;//关键字避嫌
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
     let standardized=function(_arr,_type){
       let reArr=[];
@@ -312,18 +308,21 @@ let headLoader,localDB;
         let url=getUrl(_module,_fileType)+"?v="+that.requestVersion;//.js不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
         let runThis=async function(_io,_value){
-          let value=_value;
+          let value={};
+          Object.assign(value,{
+            "key":cacheKey,
+            "value":_value ? _value.value : "",
+            "etag":_value ? _value.etag : ""
+          });
           if(_io===0){//0：缓存未到期
+            that.result[_fileType].push(_value);
             _r("success");
           }
           else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
             //setCache(cacheKey,value);
-            await that.db.setItem({
-              "key":cacheKey,
-              "value":value.value,
-              "etag":value.etag
-            });
+            that.result[_fileType].push(value);
             _r("success");
+            that.db.setItem(value);
           }
           else if(_io===2){//2：缓存已到期或不存在，需要从服务器获取
             let xhr=new XHR();
@@ -337,13 +336,15 @@ let headLoader,localDB;
                   content=content.replace(/\[v]/g,that.requestVersion);
                 }
                 //注意某些服务器不会返回etag或者last-modified
-                await that.db.setItem({
+                Object.assign(value,{
                   "key":cacheKey,
                   "value":content,
                   "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
                 });
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
+                that.result[_fileType].push(value);
                 _r("success");
+                that.db.setItem(value);
               }
             };
           }
@@ -356,12 +357,16 @@ let headLoader,localDB;
     let loadFont=function(_module){
       //FontFace目前属于实验功能
       return new Promise(async _r=>{
+        let key=getCacheKey(_module,"woff");
         let url=getUrl(_module,"fonts","woff")+"?v="+that.requestVersion;
-        if(typeof (FontFace)!=="function") return new Promise(_resolve=>_resolve("success"));
+        if(typeof (FontFace)!=="function") return new Promise((_r,_rj)=>_rj("failed"));
         const newFont=new FontFace("elfRound","url("+url+")");
         await newFont.load();
         document.fonts.add(newFont);
-        _r("success");
+        _r({
+          "key":key,
+          "value":newFont
+        });
       });
     };//加载font
     let writeJs=function(_url,_text){
@@ -417,6 +422,7 @@ let headLoader,localDB;
       head.appendChild(thisTag);
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
+      if(that.preload===1) return true;
       return new Promise((_resolve,_reject)=>{
         let cacheKey;
         let writeCode={
@@ -430,11 +436,8 @@ let headLoader,localDB;
           code[_k]='';
           let runThis=function(_resolve,_reject){
             cacheKey=getCacheKey(_k,_fileType);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
-            //getCache(cacheKey).then(_v=>code.push(_v));
-            that.db.getItem(cacheKey).then((_value)=>{
-              code[_k]=_value.value;
-              _resolve(true);
-            }).catch(_err=>_reject(_err));
+            code[_k]=that.result[_fileType].find(_v=>_v.key===cacheKey).value || "";
+            _resolve("success");
           };
           Promises.push(new Promise(runThis));
         });
@@ -478,24 +481,20 @@ let headLoader,localDB;
           }
           else{
             await load(_modules[i],_fileType);
-            if(that.preload===0) await writeThese([_modules[i]],_fileType);
-            i++;
-            await runThis();
+            await writeThese([_modules[i]],_fileType);
+            await runThis(i++);
           }
         };
         await runThis();
         _resolve("success");
       };//串行
       let promiseAll=function(_resolve){
-        if(!_modules || _modules.length===0){
-          _resolve("success");
-        }
         let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(async function(_resolve){
           await load(_modules[i],_fileType);
           _resolve("success");
         }));
         Promise.all(promises).then(async()=>{
-          if(_modules.length!==0 && that.preload===0) await writeThese(_modules,_fileType);
+          await writeThese(_modules,_fileType);
           _resolve("success");
         });
       };//并行
@@ -503,6 +502,12 @@ let headLoader,localDB;
     };//加载
     this.requestVersion=getVersion(this.dataLifecycle && this.dataLifecycle>0 ? this.dataLifecycle : (min===".min" ? 2 : 0));
     this.db=new localDB({version:this.requestVersion});
+    this.result={
+      "js":[],
+      "css":[],
+      "html":[],
+      "font":null
+    };
     this.run=function(){
       that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","),"css");
       that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","),"js");
@@ -516,11 +521,12 @@ let headLoader,localDB;
         await loadThese(that.dataJs,"js");
         await loadThese(that.dataHtml,"html");
         if(that.showLog) logData();
-        if(typeof (that.callback)==="function") that.callback.call(false);
+        if(typeof (that.callback)==="function") that.callback.call(that,that.result);
         await that.db.close();
       })();
       //console.timeEnd(ct);
     };
+    let that=this;//关键字避嫌
   };
   //_global.headLoader=headLoader;
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
