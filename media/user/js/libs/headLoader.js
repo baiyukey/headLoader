@@ -12,7 +12,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.94
+ * @version : 2.0.95
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -207,7 +207,12 @@ let headLoader,localDB;
         let list=table.index('key');
         let keyName=(min===".min" ? thisHex.encode(_key) : _key);
         let request=list.get(IDBKeyRange.only([keyName]));
-        request.onsuccess=_e=>_resolve(_e.target.result);//[注意！！！]_e.target.result有可能会返回undefined
+        let result={};
+        request.onsuccess=_e=>{
+          result=_e.target.result;
+          if(result) Object.assign(result,{"key":_key});
+          _resolve(result);
+        };//[注意！！！]_e.target.result有可能会返回undefined
         request.onerror=_e=>_reject(_e);
       });
     };
@@ -233,6 +238,9 @@ let headLoader,localDB;
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
+    this.requestVersion="";//请求版本,每次run返回一个新的
+    this.db=null;//indexDB实例
+    this.result=null;//callback返回值
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
     let standardized=function(_arr,_type){
       let reArr=[];
@@ -321,8 +329,8 @@ let headLoader,localDB;
           else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
             //setCache(cacheKey,value);
             that.result[_fileType].push(value);
+            await that.db.setItem(value);
             _r("success");
-            that.db.setItem(value);
           }
           else if(_io===2){//2：缓存已到期或不存在，需要从服务器获取
             let xhr=new XHR();
@@ -337,14 +345,13 @@ let headLoader,localDB;
                 }
                 //注意某些服务器不会返回etag或者last-modified
                 Object.assign(value,{
-                  "key":cacheKey,
                   "value":content,
                   "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
                 });
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 that.result[_fileType].push(value);
+                await that.db.setItem(value);
                 _r("success");
-                that.db.setItem(value);
               }
             };
           }
@@ -493,22 +500,22 @@ let headLoader,localDB;
           await load(_modules[i],_fileType);
           _resolve("success");
         }));
-        Promise.all(promises).then(async()=>{
+        Promise.all(promises).then(async _=>{
           await writeThese(_modules,_fileType);
           _resolve("success");
         });
       };//并行
       return new Promise(that.multiLoad ? promiseAll : oneByOne);//线上并行，线下串行（可调试）
     };//加载
-    this.requestVersion=getVersion(this.dataLifecycle && this.dataLifecycle>0 ? this.dataLifecycle : (min===".min" ? 2 : 0));
-    this.db=new localDB({version:this.requestVersion});
-    this.result={
-      "js":[],
-      "css":[],
-      "html":[],
-      "font":null
-    };
     this.run=function(){
+      that.requestVersion=getVersion(this.dataLifecycle && this.dataLifecycle>0 ? this.dataLifecycle : (min===".min" ? 2 : 0));
+      that.db=new localDB({version:that.requestVersion});
+      that.result={
+        "js":[],
+        "css":[],
+        "html":[],
+        "font":null
+      };
       that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","),"css");
       that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","),"js");
       that.dataFont=standardized(that.dataFont,"");
