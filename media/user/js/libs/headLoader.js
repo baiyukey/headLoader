@@ -6,13 +6,13 @@
  * @param {String} [this.dataDir] -资源路径
  * @param {Array} [this.dataCss] -CSS模块列表
  * @param {Array} [this.dataJs] -JS资源路径
- * @param {Number} [this.dataLifecycle=2] -缓存生成周期，单位小时，默认2
+ * @param {Number} [this.dataLifecycle=24] -缓存生成周期，单位小时，默认24
  * @param {Boolean} [this.dataActive=false] -是否自动切换线上与线下代码路径，默认否
  * @param {Function} [this.callback=null] -所有资源加载完成后的回调函数 (仅命令行模式可用)
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.96
+ * @version : 2.0.98
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -245,20 +245,20 @@ let headLoader,localDB;
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
     this.dataHtml=val.dataHtml || [];
-    this.dataLifecycle=val.dataLifecycle || dataLifecycle; //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
+    this.dataLifecycle=this.dataLifecycle && this.dataLifecycle>=0 ? this.dataLifecycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
     this.requestVersion="";//请求版本,每次run返回一个新的
-    this.db={temp:{}};//indexDB实例
     let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
     let standardized=function(_arr,_type){
       let reArr=[];
-      let thisStr="";
+      let thisStr=``;
       for(let i=0; i<_arr.length; i++){
-        thisStr=_arr[i].replace(/^(\s*)|(\s*)$/g,"").replace(new RegExp(`(.${_type})$`),"");//去前后空格及扩展名
+        thisStr=_arr[i].replace(/^(\s*)|(\s*)$/g,"");//去前后空格及扩展名
+        thisStr=thisStr.replace(new RegExp(`(.${_type})$`),``);
         if(thisStr.length!==0 && reArr.indexOf(thisStr)<0) reArr.push(thisStr);//去重
       }
       return reArr;
@@ -266,7 +266,7 @@ let headLoader,localDB;
     let setAttribute=function(_node,_property){
       if(_property.length>0){
         _property.forEach(function(e){
-          _node.setAttribute(e.split("=")[0],e.split("=")[1]);
+          _node.setAttribute(e.split("=")[0],e.split("=")[`1`]);
         });
       }
     };
@@ -520,8 +520,11 @@ let headLoader,localDB;
       };//并行
       return new Promise(that.multiLoad ? promiseAll : oneByOne);//线上并行，线下串行（可调试）
     };//加载
-    this.requestVersion=getVersion(this.dataLifecycle && this.dataLifecycle>0 ? this.dataLifecycle : (min===".min" ? 2 : 0));
+    this.requestVersion=getVersion(this.dataLifecycle);
+    //indexDB实例
     this.db=new localDB({version:this.requestVersion});
+    this.db.temp={};
+    this.db.getUrl=getUrl;
     this.run=function(){
       that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","),"css");
       that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","),"js");
@@ -544,7 +547,6 @@ let headLoader,localDB;
   };
   //_global.headLoader=headLoader;
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
-  let allScript=document.getElementsByTagName("script");
   let thisScript;
   let dataJs=[],
     dataCss=[],
@@ -555,19 +557,11 @@ let headLoader,localDB;
   let dataLifecycle;//缓存周期
   let mediaLength=1;//文件个数，用于统计页面加载多少个文件
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
-  for(let i=0; i<allScript.length; i++){
-    if(allScript[i].hasAttribute("src") && allScript[i].getAttribute("src").indexOf(atob("aGVhZExvYWRlci4="))>=0){
-      thisScript=allScript.item(i);
-      break;
-    }
-  }
-  if(!thisScript){
-    if(console.log) console.log("%c"+decodeURIComponent(atob("JUU5JTk0JTk5JUU4JUFGJUFGJUU2JThGJTkwJUU3JUE0JUJBJTNBJUU3JUE4JThCJUU1JUJBJThGJUU2JTlDJUFBJUU2JTg4JTkwJUU1JThBJTlGJUU2JTg5JUE3JUU4JUExJThDJTJDJUU2JThGJTkyJUU0JUJCJUI2JUU1JTkwJThEJUU3JUE3JUIwJUU0JUI4JUJBaGVhZExvYWRlci5qcyVFNiU4OCU5NiVFOCU4MCU4NWhlYWRMb2FkZXIubWluLmpzJUU2JUIzJUE4JUU2JTg0JThGJUU1JUE0JUE3JUU1JUIwJThGJUU1JTg2JTk5LiVFNSVBNiU4MiVFNiU5QyU4OSVFNyU5NiU5MSVFOSU5NyVBRSVFOCVBRiVCNyVFOCVBRSVCRiVFOSU5NyVBRSUzQWh0dHBzJTNBJTJGJTJGZ2l0aHViLmNvbSUyRmJhaXl1a2V5JTJGaGVhZExvYWRlcg==")),"color:#F00");
-    return false;
-  }
+  thisScript=document.currentScript;
   let reLog=console.log && min!==".min";
-  let modDir=location.pathname.replace(".html","");
-  if(location.pathname.replace(/.*\//,"").replace(".html","")==="") modDir+="index";
+  let pathname=window===window.top ? location.pathname : window.frameElement.getAttribute("src")||window.frameElement["pathname"]||"/404.html";
+  let modDir=pathname.replace(/^(.*\/)(.*)(\.html)([?]*)(.*)$/,"$1$2$4$5");
+  if(modDir.substr(-1)==="/") modDir+="index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
   if(thisScript.hasAttribute("data-active")){
     dataActive=["true",""].includes(thisScript.getAttribute("data-active"));
@@ -608,7 +602,7 @@ let headLoader,localDB;
   else{
     if(reLog) console.log('%c友情提示:script标签未设置"data-js"属性',"color:#69F;");
   }
-  if(allScript.length>0 && min!=="") allScript.item(0).remove(); //线上环境隐藏headLoader.js
+  if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
   let thisLoader=new headLoader();
   if(dataDir) thisLoader.dataDir=dataDir;
   thisLoader.dataCss=dataCss;
