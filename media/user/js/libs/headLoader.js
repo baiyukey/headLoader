@@ -6,13 +6,14 @@
  * @param {String} [this.dataDir] -资源路径
  * @param {Array} [this.dataCss] -CSS模块列表
  * @param {Array} [this.dataJs] -JS资源路径
+ * @param {Array} [this.dataSrc] -其它资源路径
  * @param {Number} [this.dataLifecycle=24] -缓存生成周期，单位小时，默认24
  * @param {Boolean} [this.dataActive=false] -是否自动切换线上与线下代码路径，默认否
  * @param {Function} [this.callback=null] -所有资源加载完成后的回调函数 (仅命令行模式可用)
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.0.98
+ * @version : 2.1.0
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -28,6 +29,7 @@ let headLoader,localDB;
     let stepTime=_hours>0 ? 1000*60*60*_hours : 1;//默认1970年以来每_hours个小时为一个值
     return String(new Date(newTime-newTime%stepTime+stepTime).getTime()-28800000);
   };
+  let getType=_=>_.replace(/^.*[\/.]*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
   let hex=function(){
     let bet="";
     for(let i=48; i<=122; i++){
@@ -217,7 +219,7 @@ let headLoader,localDB;
           };//[注意！！！]_e.target.result有可能会返回undefined
           request.onerror=_e=>_reject(_e);
         };
-        //先从缓存中查找，因为indexDB存取会有异步延迟
+        //先从内存中查找，因为indexDB存取会有延迟
         result=that.temp[_key];
         if(result){
           _resolve(result);
@@ -227,24 +229,48 @@ let headLoader,localDB;
         else await searchIndexDB();
       });
     };
+    const getItemCss=async function(_module,_tableName){
+      let module=standardized(_module,"css");
+      return await getItem(that.getUrl(module,"css"),_tableName || "data");
+    };
+    const getItemHtml=async function(_module,_tableName){
+      let module=standardized(_module,"html");
+      return await getItem(that.getUrl(module,"html"),_tableName || "data");
+    };
+    const getItemJs=async function(_module,_tableName){
+      let module=standardized(_module,"js");
+      return await getItem(that.getUrl(module,"js"),_tableName || "data");
+    };
     if(dbAble){
       this.open=openDB;
       this.close=closeDB;
       this.delete=deleteDB;
       this.setItem=setItem;
       this.getItem=getItem;
+      this.getCss=getItemCss;
+      this.getHtml=getItemHtml;
+      this.getJs=getItemJs;
       this.temp={};
     }
     let that=this;
   };
   //_global.localDB=localDB;
+  let standardized=(_url,_type)=>{
+    if(_url&&_type) return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${_type})`,``);
+    else if(_url&&!_type){
+      return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${getType(_url)}`,``);
+    }
+    else{
+      return console.error("模块格式错误")
+    }
+  }
   headLoader=function(_val){
     let val=_val || {};
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
-    this.dataHtml=val.dataHtml || [];
+    this.dataSrc=val.dataSrc || [];
     this.dataLifecycle=this.dataLifecycle && this.dataLifecycle>=0 ? this.dataLifecycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
@@ -252,17 +278,7 @@ let headLoader,localDB;
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
     this.requestVersion="";//请求版本,每次run返回一个新的
-    let isLink=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
-    let standardized=function(_arr,_type){
-      let reArr=[];
-      let thisStr=``;
-      for(let i=0; i<_arr.length; i++){
-        thisStr=_arr[i].replace(/^(\s*)|(\s*)$/g,"");//去前后空格及扩展名
-        thisStr=thisStr.replace(new RegExp(`(.${_type})$`),``);
-        if(thisStr.length!==0 && reArr.indexOf(thisStr)<0) reArr.push(thisStr);//去重
-      }
-      return reArr;
-    };
+    let isHttp=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
     let setAttribute=function(_node,_property){
       if(_property.length>0){
         _property.forEach(function(e){
@@ -274,12 +290,13 @@ let headLoader,localDB;
       _global["headLoaderCache"]={};
     }
     let getUrl=function(_module,_type,_ext){
+      //返回例如：/media/js/a.js
       if(that.dataActive && ["js","css"].includes(_type)) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace("."+(_ext || _type),"")+min)+"."+(_ext || _type);//.js不一定是最后的字符
-      return `${that.dataDir}${_module.split("|")[0]}.${_ext || _type}`;
+      return _module;
     };
     let getCacheKey=function(_module,_type){
       if(["js","css"].includes(_type)) return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min)+"."+_type;
-      return (that.dataDir+_module.split("|")[0])+"."+_type;//.replace("."+_type,"");//html
+      return _module;
     };
     //获取文件头信息
     let getEtag=function(url){
@@ -320,12 +337,12 @@ let headLoader,localDB;
     };
     let loadXHR=function(_module,_fileType){
       return new Promise(_r=>{
-        if(isLink(_module)){
+        if(isHttp(_module)){
           if(_fileType==="js") linkJs(_module);
           else if(_fileType==="css") linkCss(_module);
           return _r("success");
         }
-        let url=getUrl(_module,_fileType)+"?v="+that.requestVersion;//.js不一定是最后的字符
+        let url=getUrl(_module,_fileType)+(_module.indexOf("?")>=0 ? "&v=" : "?v=")+that.requestVersion;//扩展名不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
         let runThis=async function(_io,_value){
           let value={};
@@ -343,7 +360,7 @@ let headLoader,localDB;
             //setCache(cacheKey,value);
             that.db.temp[cacheKey]=value;
             _r("success");
-            that.db.setItem(value);
+            await that.db.setItem(value);
           }
           else if(_io===2){//2：缓存已到期或不存在，需要从服务器获取
             let xhr=new XHR();
@@ -364,7 +381,7 @@ let headLoader,localDB;
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 that.db.temp[cacheKey]=value;
                 _r("success");
-                that.db.setItem(value);
+                await that.db.setItem(value);
               }
             };
           }
@@ -486,12 +503,13 @@ let headLoader,localDB;
       if(!_modules || _modules.length===0){
         return new Promise(_resolve=>_resolve("success"));
       }
-      let load={
+      let load=({
         "JS":loadXHR,
         "CSS":loadXHR,
         "FONT":loadFont,
-        "HTML":loadXHR
-      }[_fileType.toUpperCase()];
+        "HTML":loadXHR,
+        "SRC":loadXHR
+      }[_fileType ? _fileType.toUpperCase() : "SRC"]);
       //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appthat.requestVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
       let oneByOne=async function(_resolve){
         let i=0;
@@ -526,17 +544,21 @@ let headLoader,localDB;
     this.db.temp={};
     this.db.getUrl=getUrl;
     this.run=function(){
-      that.dataCss=standardized(that.dataCss.join(",").replace(/_css/g,modDir).split(","),"css");
-      that.dataJs=standardized(that.dataJs.join(",").replace(/_js/g,modDir).split(","),"js");
-      that.dataFont=standardized(that.dataFont,"");
-      that.dataHtml=standardized(that.dataHtml,"html");
+      that.dataCss=that.dataCss.map(_v=>standardized(_v==="_css" ? modDir : _v,"css"));
+      that.dataCss=Array.from(new Set(that.dataCss));//去重
+      that.dataJs=that.dataJs.map(_v=>standardized(_v==="_js" ? modDir : _v,"js"));
+      that.dataJs=Array.from(new Set(that.dataJs));//去重
+      that.dataFont=that.dataFont.map(_v=>standardized(_v,""));
+      that.dataFont=Array.from(new Set(that.dataFont));//去重
+      that.dataSrc=that.dataSrc.map(_v=>standardized(_v,""));
+      that.dataSrc=Array.from(new Set(that.dataSrc));//去重
       (async function(){
         await that.db.open();
         //先加载dataCss，后加载dataJs
         await loadThese(that.dataCss,"css");
         await loadThese(that.dataFont,"font");
         await loadThese(that.dataJs,"js");
-        await loadThese(that.dataHtml,"html");
+        await loadThese(that.dataSrc,"");
         if(that.showLog) logData();
         if(typeof (that.callback)==="function") that.callback.call(that,that.db.temp);
         await that.db.close();
@@ -551,7 +573,7 @@ let headLoader,localDB;
   let dataJs=[],
     dataCss=[],
     dataFont=[],
-    dataHtml=[];
+    dataSrc=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
   let dataLifecycle;//缓存周期
@@ -596,11 +618,8 @@ let headLoader,localDB;
   if(thisScript.hasAttribute("data-font")){
     dataFont=thisScript.getAttribute("data-font").split(",");//.replace(/_js/g,modDir);
   }
-  if(thisScript.hasAttribute("data-html")){
-    dataHtml=thisScript.getAttribute("data-html").split(",");//.replace(/_js/g,modDir);
-  }
-  else{
-    if(reLog) console.log('%c友情提示:script标签未设置"data-js"属性',"color:#69F;");
+  if(thisScript.hasAttribute("data-src")){
+    dataSrc=thisScript.getAttribute("data-src").split(",");//.replace(/_js/g,modDir);
   }
   if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
   let thisLoader=new headLoader();
@@ -608,7 +627,7 @@ let headLoader,localDB;
   thisLoader.dataCss=dataCss;
   thisLoader.dataJs=dataJs;
   thisLoader.dataFont=dataFont;
-  thisLoader.dataHtml=dataHtml;
+  thisLoader.dataSrc=dataSrc;
   thisLoader.dataLifecycle=dataLifecycle;
   thisLoader.showLog=false;//是否显示统计
   thisLoader.run();
