@@ -52,7 +52,8 @@
     loader.dataActive=false;
     loader.preload=0;
     loader.callback=function(){console.log("headLoader is done!")};   //外部命令法可以定义回调函数
-    loader.run();
+    await loader.run();
+    console.log("load success");
 </script>
 ```
 #### 当然,您也可以写成这样
@@ -68,8 +69,38 @@
     preload:0,
     callback:function(){console.log("headLoader is done!")}   //外部命令法可以定义回调函数
   });
-  loader.run();
+  await loader.run();
+  console.log("load success");
 </script>
+```
+#### 更多类型加载
+```javascript
+   let thisLoader=new headLoader();
+   //读取一个文件
+   let file=await thisLoader.loadItem("/button.svg");
+   console.log(file["/button.svg"].value);
+   //读取多个文件
+   let files=await thisLoader.loadItem(["/index.html","/icon.svg"]);
+   console.log(files["/index.html"].value);
+   console.log(files["/icon.svg"].value);
+   //后续重复读取
+   let button=await thisLoader.db.getItem("/button.svg").value;
+   let index=await thisLoader.db.getItem("/index.html").value;
+   let icon=await thisLoader.db.getItem("//icon.svg").value;
+```
+#### 如何实现跨页缓存管理
+```javascript
+   //a.html和b.html的JS程序需要先各自实例化一个headLoader
+   let loader=new headLoader();
+   //仅在报错信息为数据库未打开时使用，整个网站只调用一次即可
+   await loader.db.open();
+   //在任意一个页面缓存写入使用命令：loader.db.setItem(key,value)
+   //注意：value为数值0时插入值为null
+   await loader.db.setItem("names",["张三","李四","王五"]);
+   //在任意任一个页面缓存读取：loader.db.getItem(key)
+   let names=await loader.db.getItem("names");
+   if(names) console.log(names.value);
+   //["张三","李四","王五"]
 ```
 使用说明
 --
