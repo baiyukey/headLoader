@@ -13,7 +13,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.0
+ * @version : 2.1.1
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -256,16 +256,17 @@ let headLoader,localDB;
   };
   //_global.localDB=localDB;
   let standardized=(_url,_type)=>{
-    if(_url&&_type) return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${_type})`,``);
-    else if(_url&&!_type){
+    if(_url && _type) return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${_type})`,``);
+    else if(_url && !_type){
       return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${getType(_url)}`,``);
     }
     else{
-      return console.error("模块格式错误")
+      return console.error("模块格式错误");
     }
-  }
+  };
   headLoader=function(_val){
     let val=_val || {};
+    this.dataMin=min;
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
@@ -543,7 +544,7 @@ let headLoader,localDB;
     this.db=new localDB({version:this.requestVersion});
     this.db.temp={};
     this.db.getUrl=getUrl;
-    this.run=function(){
+    this.run=async function(){
       that.dataCss=that.dataCss.map(_v=>standardized(_v==="_css" ? modDir : _v,"css"));
       that.dataCss=Array.from(new Set(that.dataCss));//去重
       that.dataJs=that.dataJs.map(_v=>standardized(_v==="_js" ? modDir : _v,"js"));
@@ -552,18 +553,21 @@ let headLoader,localDB;
       that.dataFont=Array.from(new Set(that.dataFont));//去重
       that.dataSrc=that.dataSrc.map(_v=>standardized(_v,""));
       that.dataSrc=Array.from(new Set(that.dataSrc));//去重
-      (async function(){
-        await that.db.open();
-        //先加载dataCss，后加载dataJs
-        await loadThese(that.dataCss,"css");
-        await loadThese(that.dataFont,"font");
-        await loadThese(that.dataJs,"js");
-        await loadThese(that.dataSrc,"");
-        if(that.showLog) logData();
-        if(typeof (that.callback)==="function") that.callback.call(that,that.db.temp);
-        await that.db.close();
-      })();
+      await that.db.open();
+      //先加载dataCss，后加载dataJs
+      await loadThese(that.dataCss,"css");
+      await loadThese(that.dataFont,"font");
+      await loadThese(that.dataJs,"js");
+      await loadThese(that.dataSrc,"");
+      if(that.showLog) logData();
+      if(typeof (that.callback)==="function") that.callback.call(that,that.db.temp);
+      //await that.db.close();
+      return that.db.temp;
       //console.timeEnd(ct);
+    };
+    this.loadItem=async function(_url){
+      that.dataSrc=[_url].flat();
+      return await that.run();
     };
     let that=this;//关键字避嫌
   };
@@ -581,7 +585,7 @@ let headLoader,localDB;
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
   thisScript=document.currentScript;
   let reLog=console.log && min!==".min";
-  let pathname=window===window.top ? location.pathname : window.frameElement.getAttribute("src")||window.frameElement["pathname"]||"/404.html";
+  let pathname=window===window.top ? location.pathname : window.frameElement.getAttribute("src") || window.frameElement["pathname"] || "/404.html";
   let modDir=pathname.replace(/^(.*\/)(.*)(\.html)([?]*)(.*)$/,"$1$2$4$5");
   if(modDir.substr(-1)==="/") modDir+="index";
   modDir=modDir.indexOf("/")===0 ? modDir.substr(1) : modDir;
@@ -622,13 +626,15 @@ let headLoader,localDB;
     dataSrc=thisScript.getAttribute("data-src").split(",");//.replace(/_js/g,modDir);
   }
   if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
-  let thisLoader=new headLoader();
-  if(dataDir) thisLoader.dataDir=dataDir;
-  thisLoader.dataCss=dataCss;
-  thisLoader.dataJs=dataJs;
-  thisLoader.dataFont=dataFont;
-  thisLoader.dataSrc=dataSrc;
-  thisLoader.dataLifecycle=dataLifecycle;
-  thisLoader.showLog=false;//是否显示统计
-  thisLoader.run();
+  (async _=>{
+    let thisLoader=new headLoader();
+    if(dataDir) thisLoader.dataDir=dataDir;
+    thisLoader.dataCss=dataCss;
+    thisLoader.dataJs=dataJs;
+    thisLoader.dataFont=dataFont;
+    thisLoader.dataSrc=dataSrc;
+    thisLoader.dataLifecycle=dataLifecycle;
+    thisLoader.showLog=false;//是否显示统计
+    await thisLoader.run();
+  })()
 })((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);
