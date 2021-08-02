@@ -6,18 +6,20 @@
  * @param {String} [this.dataDir] -资源路径
  * @param {Array} [this.dataCss] -CSS模块列表
  * @param {Array} [this.dataJs] -JS资源路径
- * @param {Array} [this.dataSrc] -其它资源路径
+ * @param {Array} [this.dataFont] -字体资源路径
+ * @param {Array} [this.dataFile] -其它资源路径
  * @param {Number} [this.dataLifecycle=24] -缓存生成周期，单位小时，默认24
  * @param {Boolean} [this.dataActive=false] -是否自动切换线上与线下代码路径，默认否
  * @param {Function} [this.callback=null] -所有资源加载完成后的回调函数 (仅命令行模式可用)
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.1
+ * @version : 2.1.4
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
 (function(_global){
+  let head=document.getElementsByTagName('HEAD').item(0);
   let error=function(){
     document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
   };
@@ -81,7 +83,7 @@ let headLoader,localDB;
     //_global.localDBResult的状态 0:关闭，1:打开
     _global.localDBStatus=_global.localDBStatus || 0;
     const dbAble=function(){
-      if(_global.indexedDB || _global.webkitIndexedDB || _global.mozIndexedDB || _global.msIndexedDB) return true;
+      if(_global.indexedDB || _global["webkitIndexedDB"] || _global["mozIndexedDB"] || _global["msIndexedDB"]) return true;
       console && console.log("您的浏览器不支持indexedDB，请使用现代浏览器，例如chrome,firefox等.");
       return false;
     };
@@ -169,9 +171,9 @@ let headLoader,localDB;
       else{
         //简写时只有两个参数，_key,_value
         //例如：setItem("/a/color.css",'a{color:red}')
-        defaultArgument.key=arguments[0] || defaultArgument.key;
-        defaultArgument.value=arguments[1] || defaultArgument.value;
-        defaultArgument.tableName=arguments[2] || defaultArgument.tableName;
+        defaultArgument.key=arguments.length>0 ? arguments[0] : defaultArgument.key;
+        defaultArgument.value=arguments.length>1 ? (arguments[1]) : defaultArgument.value;
+        defaultArgument.tableName=arguments.length>2 ? arguments[2] : defaultArgument.tableName;
       }
       return new Promise(async(_resolve,_reject)=>{
         await openDB();
@@ -183,7 +185,7 @@ let headLoader,localDB;
         };
         let method="add";
         await getItem(defaultArgument.key,"data").then(_v=>{
-          method=_v ? "put" : "add";
+          method=(_v ? "put" : "add");
         }).catch(_v=>{
           method="add";
         });
@@ -229,6 +231,10 @@ let headLoader,localDB;
         else await searchIndexDB();
       });
     };
+    const getValue=async function(_key){
+      let thisResult=await getItem(_key);
+      return thisResult ? thisResult.value : false;
+    }
     const getItemCss=async function(_module,_tableName){
       let module=standardized(_module,"css");
       return await getItem(that.getUrl(module,"css"),_tableName || "data");
@@ -247,6 +253,8 @@ let headLoader,localDB;
       this.delete=deleteDB;
       this.setItem=setItem;
       this.getItem=getItem;
+      this.setValue=setItem;
+      this.getValue=getValue;
       this.getCss=getItemCss;
       this.getHtml=getItemHtml;
       this.getJs=getItemJs;
@@ -271,7 +279,7 @@ let headLoader,localDB;
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
-    this.dataSrc=val.dataSrc || [];
+    this.dataFile=val.dataFile || [];
     this.dataLifecycle=this.dataLifecycle && this.dataLifecycle>=0 ? this.dataLifecycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
@@ -279,7 +287,7 @@ let headLoader,localDB;
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
     this.requestVersion="";//请求版本,每次run返回一个新的
-    let isHttp=(_thisMode)=>_thisMode.indexOf("http://")===0 || _thisMode.indexOf("https://")===0;
+    let isHttp=_thisMode=>/^http[s]?:\/\//.test(_thisMode);
     let setAttribute=function(_node,_property){
       if(_property.length>0){
         _property.forEach(function(e){
@@ -345,7 +353,7 @@ let headLoader,localDB;
         }
         let url=getUrl(_module,_fileType)+(_module.indexOf("?")>=0 ? "&v=" : "?v=")+that.requestVersion;//扩展名不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
-        let runThis=async function(_io,_value){
+        let getXHR=async function(_io,_value){
           let value={};
           Object.assign(value,{
             "key":cacheKey,
@@ -364,13 +372,17 @@ let headLoader,localDB;
             await that.db.setItem(value);
           }
           else if(_io===2){//2：缓存已到期或不存在，需要从服务器获取
-            let xhr=new XHR();
-            xhr.open("GET",url,true);
+            let xhr=new XHR(),fileType=getType(value.key),method="responseText";
+            xhr.open("GET",url);
+            if(!["js","ts","css","svg","text","xml","json","html","htm"].includes(fileType)){
+              xhr.responseType="arraybuffer";
+              method="response";
+            } //把异步获取类型改为arraybuffer二进制类型
             xhr.send();
             xhr.onreadystatechange=async function(){
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
-                let content=xhr.responseText || "";
-                if(_fileType==="css"){
+                let content=xhr[method];
+                if(_fileType==="css" && content){
                   //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
                   content=content.replace(/\[v]/g,that.requestVersion);
                 }
@@ -388,60 +400,46 @@ let headLoader,localDB;
           }
         };
         that.db.getItem(cacheKey).then((_value)=>{
-          getStatus(_value,url).then(_status=>runThis(_status,_value)).catch(_err=>console.error(_err));
+          getStatus(_value,url).then(_status=>getXHR(_status,_value)).catch(_err=>console.error(_err));
         });
       });
-    };//XHR类型加载器
-    let loadFont=function(_module){
-      //FontFace目前属于实验功能
-      return new Promise(async _r=>{
-        let key=getCacheKey(_module,"woff");
-        let url=getUrl(_module,"fonts","woff")+"?v="+that.requestVersion;
-        if(typeof (FontFace)!=="function") return new Promise((_r,_rj)=>_rj("failed"));
-        const newFont=new FontFace("elfRound","url("+url+")");
-        await newFont.load();
-        document.fonts.add(newFont);
-        _r({
-          "key":key,
-          "value":newFont
-        });
-      });
-    };//加载font
-    let writeJs=function(_url,_text){
-      //if(document.getElementsByTagName('HEAD').length===0) requestAnimationFrame(()=>writeJs(_url,_text));
+    };
+    let writeJs=function(_codes){
       if(min!==""){
-        Function(_text)();//隐藏代码
+        Function(Object.values(_codes).join(";"))();//隐藏代码
         return false;
       }
-      let head=document.getElementsByTagName('HEAD').item(0);
       let thisTag=document.createElement("script");
-      setAttribute(thisTag,_url.split("|").splice(1));//用于js标签自定义属性，例如_url=?id=888|data-value=999这类的属性定义
+      let thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_js"+that.requestVersion;
+      //setAttribute(thisTag,thisTagName.split("|").splice(1));//用于js标签自定义属性，例如_url=?id=888|data-value=999这类的属性定义
       thisTag.setAttribute("type","text/javascript");
-      thisTag.setAttribute("data-name",_url.split("|")[0].replace(".js","")+min);
-      thisTag.innerHTML=_text;
+      thisTag.setAttribute("data-name",thisTagName.split("|")[0].replace(".js","")+min);
+      thisTag.innerHTML=Object.values(_codes).join(";");
       head.appendChild(thisTag);
     };//往页面写入js
-    let writeCss=function(_url,_text){
-      if(document.getElementsByTagName('HEAD').length===0) return false;
-      let head=document.getElementsByTagName('HEAD').item(0);
-      let thisTag;
-      if(that.multiLoad){
+    let writeCss=function(_codes){
+      let thisTag,thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_js"+that.requestVersion;
+      if(min!==""){
         thisTag=document.getElementsByTagName('style').item(0);
         if(thisTag){
-          thisTag.innerHTML+=_text;
+          thisTag.innerHTML+=Object.values(_codes).join(" ");
           return false;
         }
       }
       thisTag=document.createElement("style");
-      setAttribute(thisTag,_url.split("|").splice(1));
+      //setAttribute(thisTag,thisTagName.split("|").splice(1));
       thisTag.setAttribute("type","text/css");
-      thisTag.setAttribute("data-name",_url.split("|")[0].replace(".css","")+min);
-      thisTag.innerHTML=_text;
+      thisTag.setAttribute("data-name",thisTagName.split("|")[0].replace(".css","")+min);
+      thisTag.innerHTML=Object.values(_codes).join(" ");
       head.appendChild(thisTag);
     };//往页面写入css
+    let writeFont=async function(_codes){
+      Object.keys(_codes).forEach(_key=>{
+        document["fonts"].add(new FontFace(_key.replace(/^.*\/|\..*$/g,''),_codes[_key]));
+      });
+    };
     let linkJs=function(_url){
       if(document.getElementsByTagName('HEAD').length===0) return false;
-      let head=document.getElementsByTagName('HEAD').item(0);
       let thisTag=document.createElement("script");
       //link.type="text/javascript";
       setAttribute(thisTag,_url.split("|").splice(1));
@@ -450,7 +448,6 @@ let headLoader,localDB;
     };//往页面引入js
     let linkCss=function(_url){
       if(document.getElementsByTagName('HEAD').length===0) return false;
-      let head=document.getElementsByTagName('HEAD').item(0);
       let thisTag=document.createElement("link");
       setAttribute(thisTag,_url.split("|").splice(1));
       thisTag.type="text/css";
@@ -460,27 +457,28 @@ let headLoader,localDB;
       head.appendChild(thisTag);
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
-      if(that.preload===1) return true;
+      if(that.preload===1) return true; //预加载不应用于当前页面
       return new Promise((_resolve,_reject)=>{
         let cacheKey;
         let writeCode={
           "JS":writeJs,
-          "CSS":writeCss
+          "CSS":writeCss,
+          "FONT":writeFont
         }[_fileType.toUpperCase()];
-        if(!writeCode) return _resolve("页面写入仅支持js、css.");
-        let code={};
+        if(!writeCode) return _resolve("页面写入仅支持js、css、font");
+        let codes={};
         let Promises=[];
         _modules.forEach((_k)=>{
-          code[_k]='';
+          codes[_k]='';
           let runThis=function(_resolve,_reject){
             cacheKey=getCacheKey(_k,_fileType);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
-            code[_k]=that.db.temp[cacheKey] ? that.db.temp[cacheKey].value : "";
+            codes[_k]=that.db.temp[cacheKey] ? that.db.temp[cacheKey].value : "";
             _resolve("success");
           };
           Promises.push(new Promise(runThis));
         });
         Promise.all(Promises).then(()=>{
-          writeCode(_modules.length===1 ? _modules[0] : _fileType+'_'+that.requestVersion,Object.values(code).join(_fileType==='js' ? ';' : ' '));
+          writeCode(codes);
           _resolve("success");
         }).catch(_err=>_reject(_err));
       });
@@ -499,45 +497,43 @@ let headLoader,localDB;
         console.log('当前页面使用headLoader'+(that.multiLoad ? "并行" : "串行")+'网络请求%c'+mediaLength+'个%cJS/CSS文件，程序用时%c'+thisDuration+'毫秒%c，累计网络请求%c'+_global.headLoaderHistory.length+'个%cJS/CSS文件，单文件平均用时%c'+avg+'毫秒','color:#1b8884','','color:#1b8884','','color:#1b8884','','color:#1b8884','');
       },3000);
     };
-    let loadThese=function(_modules,_fileType){
-      if(document.getElementsByTagName('HEAD').length===0) return false;
-      if(!_modules || _modules.length===0){
-        return new Promise(_resolve=>_resolve("success"));
-      }
-      let load=({
-        "JS":loadXHR,
-        "CSS":loadXHR,
-        "FONT":loadFont,
-        "HTML":loadXHR,
-        "SRC":loadXHR
-      }[_fileType ? _fileType.toUpperCase() : "SRC"]);
-      //if(navigator.appName==="Microsoft Internet Explorer"&&parseInt(navigator.appthat.requestVersion.split(";")[1].replace("MSIE",""))<9&&_fileType==="JS" ) modules.splice(0,0,"html5shiv");//IE版本小于9
-      let oneByOne=async function(_resolve){
+    //串行加载
+    let serialLoad=function(_modules,_fileType){
+      return async(_resolve)=>{
         let i=0;
         let runThis=async function(){
           if(i>=_modules.length){
             return true;
           }
           else{
-            await load(_modules[i],_fileType);
+            await loadXHR(_modules[i],_fileType);
             await writeThese([_modules[i]],_fileType);
             await runThis(i++);
           }
         };
         await runThis();
         _resolve("success");
-      };//串行
-      let promiseAll=function(_resolve){
+      };
+    };
+    //并行加载
+    let multiLoad=function(_modules,_fileType){
+      return async(_resolve)=>{
         let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(async function(_resolve){
-          await load(_modules[i],_fileType);
+          await loadXHR(_modules[i],_fileType);
           _resolve("success");
         }));
         Promise.all(promises).then(async _=>{
           await writeThese(_modules,_fileType);
           _resolve("success");
         });
-      };//并行
-      return new Promise(that.multiLoad ? promiseAll : oneByOne);//线上并行，线下串行（可调试）
+      };
+    };
+    let loadThese=function(_modules,_fileType){
+      if(document.getElementsByTagName('HEAD').length===0) return false;
+      if(!_modules || _modules.length===0){
+        return new Promise(_resolve=>_resolve("success"));
+      }
+      return new Promise(that.multiLoad ? multiLoad(_modules,_fileType) : serialLoad(_modules,_fileType));//线上并行，线下串行（可调试）
     };//加载
     this.requestVersion=getVersion(this.dataLifecycle);
     //indexDB实例
@@ -551,22 +547,22 @@ let headLoader,localDB;
       that.dataJs=Array.from(new Set(that.dataJs));//去重
       that.dataFont=that.dataFont.map(_v=>standardized(_v,""));
       that.dataFont=Array.from(new Set(that.dataFont));//去重
-      that.dataSrc=that.dataSrc.map(_v=>standardized(_v,""));
-      that.dataSrc=Array.from(new Set(that.dataSrc));//去重
+      that.dataFile=that.dataFile.map(_v=>standardized(_v,""));
+      that.dataFile=Array.from(new Set(that.dataFile));//去重
       await that.db.open();
       //先加载dataCss，后加载dataJs
       await loadThese(that.dataCss,"css");
       await loadThese(that.dataFont,"font");
       await loadThese(that.dataJs,"js");
-      await loadThese(that.dataSrc,"");
+      await loadThese(that.dataFile,"");
       if(that.showLog) logData();
       if(typeof (that.callback)==="function") that.callback.call(that,that.db.temp);
       //await that.db.close();
-      return that.db.temp;
+      return Object.keys(that.db.temp).length===0 ? false : that.db.temp;
       //console.timeEnd(ct);
     };
     this.loadItem=async function(_url){
-      that.dataSrc=[_url].flat();
+      that.dataFile=[_url].flat();
       return await that.run();
     };
     let that=this;//关键字避嫌
@@ -577,7 +573,7 @@ let headLoader,localDB;
   let dataJs=[],
     dataCss=[],
     dataFont=[],
-    dataSrc=[];
+    dataFile=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
   let dataLifecycle;//缓存周期
@@ -622,8 +618,8 @@ let headLoader,localDB;
   if(thisScript.hasAttribute("data-font")){
     dataFont=thisScript.getAttribute("data-font").split(",");//.replace(/_js/g,modDir);
   }
-  if(thisScript.hasAttribute("data-src")){
-    dataSrc=thisScript.getAttribute("data-src").split(",");//.replace(/_js/g,modDir);
+  if(thisScript.hasAttribute("data-file")){
+    dataFile=thisScript.getAttribute("data-file").split(",");//.replace(/_js/g,modDir);
   }
   if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
   (async _=>{
@@ -632,9 +628,9 @@ let headLoader,localDB;
     thisLoader.dataCss=dataCss;
     thisLoader.dataJs=dataJs;
     thisLoader.dataFont=dataFont;
-    thisLoader.dataSrc=dataSrc;
+    thisLoader.dataFile=dataFile;
     thisLoader.dataLifecycle=dataLifecycle;
     thisLoader.showLog=false;//是否显示统计
     await thisLoader.run();
-  })()
+  })();
 })((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);

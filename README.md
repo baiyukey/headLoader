@@ -5,18 +5,19 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.1.1,他有如下特点：
+### 当前版本为v2.1.4,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
-    2.支持html、svg等文件类型的读取;
-    3.当页面刷新或者重新载入时，会从缓存中优先读取，缩短响应时间，减少页面载入时的闪烁；
-    4.可实现资源预加载功能；
-    5.资源热加载，即随需随加载，而不需要刷新页面；
-    6.缓存生命周期可自定义，默认每24个小时更新一次，即能复用本地缓存又能保证代码的时效性；
-    7.缓存生命周期结束后，如果服务器文件未修改，继续使用本地缓存，进一步减少网络流量提高效率；
-    8.生产环境自动加载(js、css)文档的.min版本，开发环境加载正常版本，开发及上线一气呵成，减少维护成本；
-    9.生产环境并行加载文档加快速度，开发环境串行加载利于观察程序运行；
-    10.生产环境程序在内存中运行便于保护及隐藏代码，开发环境正常在页面中运行方便调试与定位；
-    11.从v2.0.0版本后使用`indexedDB`数据库，容量不再受限制，尽可用它构建更大规模的项目。
+    2.支持"js","css","svg","text","xml","json","html","htm"等文本文件的读取；
+    3.支持图片、视频、字体、图标库等二进制文件类型的读取；
+    4.当页面刷新或者重新载入时，会从缓存中优先读取，缩短响应时间，减少页面载入时的闪烁；
+    5.可实现资源预加载功能，即加载完成后存入缓存，当其它页面需要时从缓存快速读取；
+    6.资源热加载，即加载完成后自动应用，而不需要刷新页面；
+    7.缓存生命周期可自定义，默认每24个小时更新一次，即能复用本地缓存又能保证代码的时效性；
+    8.缓存生命周期结束后，如果服务器文件未修改，继续使用本地缓存，进一步减少网络流量提高效率；
+    9.生产环境自动加载(js、css)文档的.min版本，开发环境加载正常版本，开发及上线一气呵成，减少维护成本；
+    10.生产环境并行加载文档加快速度，开发环境串行加载利于观察程序运行；
+    11.生产环境程序在内存中运行便于保护及隐藏代码，开发环境正常在页面中运行方便调试与定位；
+    12.从v2.0.0版本后使用`indexedDB`数据库，容量不再受限制，尽可用它构建更大规模的项目。
 快速上手
 --
 ### 普通页面加载资源方法
@@ -43,34 +44,50 @@
 ```html
 <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
 <script type="text/javascript">
-    let loader=new headLoader();
-    loader.dataDir="/media/user/"; //仅对js、css文件
-    loader.dataCss=['public/global','public/color','other','_css'];
-    loader.dataJs=['libs/jquery-1.8.0','libs/jquery.elfAlert','_js'];
-    loader.dataSrc=['/a.html','/b.svg'];
-    loader.dataLifeCycle=12;
-    loader.dataActive=false;
-    loader.preload=0;
-    loader.callback=function(){console.log("headLoader is done!")};   //外部命令法可以定义回调函数
-    await loader.run();
-    console.log("load success");
+   let loader=new headLoader();
+   // String | js、css资源路径，默认"./" | 可选项
+   loader.dataDir="/media/";
+   // Array | CSS资源，默认为空数组"[]" | 可选项
+   loader.dataCss=['public/css1','public/css2','_css'];
+   // Array | JS资源，默认为空数组"[]" | 可选项
+   loader.dataJs=['libs/jquery-3.1.0','libs/jquery.elfAlert','_js'];
+   // Array | 字体资源，默认为空数组"[]" | 可选项
+   loader.dataFont=['fonts/a.woff','fonts/b.woff'];
+   // Array | 支持更多类型的资源，例如html、svg等，默认为空数组"[]" | 可选项
+   loader.dataFile=['html/a.html','svg/a.svg'];
+   // Number | 缓存生命周期，单位小时，默认24 | 可选项
+   loader.dataLifecycle=24;
+   // Boolean | 线下与线上路径是否自动切换，例如"/js/"转为"/js.min/"，"/a.js"转为"a.min.js"，默认False | 可选项
+   loader.dataActive=false;
+   // Boolean | 是否显示加载统计，默认false | 可选项
+   loader.showLog=false;
+   // Number, 0或1 | 预加载开关 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 | 可选项
+   loader.preload=0;
+   // Function | 外部命令法可以定义回调函数，参数为请求的数据结果 | 仅用于命令行模式 | 可选项
+   loader.callback=function(_data){console.log(_data)}
+   await loader.run()
+   // {"/media/css/public/css.css":value, ...} 或 false
+   // let result=await loader.run();
 </script>
 ```
 #### 当然,您也可以写成这样
 ```html
 <script type="text/javascript">
-  let loader=new headLoader({
-    dataDir:"/media/users/",  //仅对js、css文件
-    dataCss:['public/global','public/color','other','_css'],
-    dataJs:['libs/jquery-1.8.0','libs/jquery.elfAlert','_js'],
-    dataSrc:['/a.html','/b.svg'],
-    dataLifeCycle:24,
-    dataActive:false,
-    preload:0,
-    callback:function(){console.log("headLoader is done!")}   //外部命令法可以定义回调函数
-  });
-  await loader.run();
-  console.log("load success");
+   let loader=new headLoader({
+      dataDir:"/media/",
+      dataCss:['public/css1','public/css2','_css'],
+      dataJs:['libs/jquery-3.1.0','libs/jquery.elfAlert','_js'],
+      dataFont:['fonts/a.woff','fonts/b.woff'],
+      dataFile:['html/a.html','svg/a.svg'],
+      dataLifecycle:2,
+      dataActive:false
+      showLog:false,
+      preload:0,
+      callback:function(_data){console.log(_data)}
+   });
+   await loader.run()
+   // {"/media/css/public/css.css":value, ...} 或 false
+   // let result=await loader.run();
 </script>
 ```
 #### 更多类型加载
@@ -84,9 +101,9 @@
    console.log(files["/index.html"].value);
    console.log(files["/icon.svg"].value);
    //后续重复读取
-   let button=await thisLoader.db.getItem("/button.svg").value;
-   let index=await thisLoader.db.getItem("/index.html").value;
-   let icon=await thisLoader.db.getItem("//icon.svg").value;
+   let button=await thisLoader.db.getValue("/button.svg");
+   let index=await thisLoader.db.getValue("/index.html");
+   let icon=await thisLoader.db.getValue("//icon.svg");
 ```
 #### 如何实现跨页缓存管理
 ```javascript
@@ -94,13 +111,11 @@
    let loader=new headLoader();
    //仅在报错信息为数据库未打开时使用，整个网站只调用一次即可
    await loader.db.open();
-   //在任意一个页面缓存写入使用命令：loader.db.setItem(key,value)
-   //注意：value为数值0时插入值为null
-   await loader.db.setItem("names",["张三","李四","王五"]);
-   //在任意任一个页面缓存读取：loader.db.getItem(key)
-   let names=await loader.db.getItem("names");
-   if(names) console.log(names.value);
-   //["张三","李四","王五"]
+   //在任意一个页面缓存写入使用命令：loader.db.setValue(key,value)
+   await loader.db.setValue("names",["张三","李四","王五"]);
+   //在任意任一个页面缓存读取：loader.db.getValue(key)
+   let names=await loader.db.getValue("names");
+   console.log(names);//["张三","李四","王五"] 或 false
 ```
 使用说明
 --
@@ -114,6 +129,8 @@
         data-dir  相当于 dataDir
         data-css 相当于 dataCss
         data-js    相当于 dataJs
+        data-font    相当于 dataFont
+        data-file    相当于 dataFile
         data-src    相当于 dataSrc
         data-lifecycle    相当于 dataLifecycle
         data-active    相当于 dataActive
@@ -121,6 +138,6 @@
     8.命令行语句法可以定义回调函数callback,标签属性定义法不支持定义回调函数
 具体说明
 --
-   欢迎访问我的个人网站解锁更多玩法 [UI精灵](http://www.uielf.com/headLoader/) 
+   欢迎访问我的个人网站解锁更多玩法 [UI精灵 uiElf.com](http://www.uielf.com/headLoader/) 
    作者:宇哥
    联系方式:baiyukey@qq.com
