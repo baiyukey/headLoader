@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.4
+ * @version : 2.1.5
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -31,7 +31,7 @@ let headLoader,localDB;
     let stepTime=_hours>0 ? 1000*60*60*_hours : 1;//默认1970年以来每_hours个小时为一个值
     return String(new Date(newTime-newTime%stepTime+stepTime).getTime()-28800000);
   };
-  let getType=_=>_.replace(/^.*[\/.]*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
+  let getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
   let hex=function(){
     let bet="";
     for(let i=48; i<=122; i++){
@@ -383,8 +383,8 @@ let headLoader,localDB;
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
                 let content=xhr[method];
                 if(_fileType==="css" && content){
-                  //content=content.replace(/\[dataDir]/g,that.dataDir); //css文件的动态路径需单独处理
-                  content=content.replace(/\[v]/g,that.requestVersion);
+                  //CSS中的${.*}替换成全局变量
+                  content=content.replace(/window\[(.*)]/g,_=>(_global[_.replace(/window\[(.*)]/,"$1")]||_));
                 }
                 //注意某些服务器不会返回etag或者last-modified
                 Object.assign(value,{
