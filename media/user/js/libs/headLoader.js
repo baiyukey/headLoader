@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.5
+ * @version : 2.1.6
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -383,8 +383,8 @@ let headLoader,localDB;
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
                 let content=xhr[method];
                 if(_fileType==="css" && content){
-                  //CSS中的${.*}替换成全局变量
-                  content=content.replace(/window\[(.*)]/g,_=>(_global[_.replace(/window\[(.*)]/,"$1")]||_));
+                  //CSS中的window[.*]替换成全局变量
+                  content=content.replace(/window\[([^\]]*)]/g,(_,_b)=>_global[_b]||"");
                 }
                 //注意某些服务器不会返回etag或者last-modified
                 Object.assign(value,{
@@ -529,7 +529,6 @@ let headLoader,localDB;
       };
     };
     let loadThese=function(_modules,_fileType){
-      if(document.getElementsByTagName('HEAD').length===0) return false;
       if(!_modules || _modules.length===0){
         return new Promise(_resolve=>_resolve("success"));
       }
@@ -623,14 +622,15 @@ let headLoader,localDB;
   }
   if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
   (async _=>{
-    let thisLoader=new headLoader();
-    if(dataDir) thisLoader.dataDir=dataDir;
-    thisLoader.dataCss=dataCss;
-    thisLoader.dataJs=dataJs;
-    thisLoader.dataFont=dataFont;
-    thisLoader.dataFile=dataFile;
-    thisLoader.dataLifecycle=dataLifecycle;
-    thisLoader.showLog=false;//是否显示统计
-    await thisLoader.run();
+    if(document.getElementsByTagName('HEAD').length===0) return false;
+    let initLoader=new headLoader();
+    if(dataDir) initLoader.dataDir=dataDir;
+    initLoader.dataCss=dataCss;
+    initLoader.dataJs=dataJs;
+    initLoader.dataFont=dataFont;
+    initLoader.dataFile=dataFile;
+    initLoader.dataLifecycle=dataLifecycle;
+    initLoader.showLog=false;//是否显示统计
+    await initLoader.run();
   })();
 })((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);
