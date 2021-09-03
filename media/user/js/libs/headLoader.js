@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.6
+ * @version : 2.1.7
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -234,7 +234,7 @@ let headLoader,localDB;
     const getValue=async function(_key){
       let thisResult=await getItem(_key);
       return thisResult ? thisResult.value : false;
-    }
+    };
     const getItemCss=async function(_module,_tableName){
       let module=standardized(_module,"css");
       return await getItem(that.getUrl(module,"css"),_tableName || "data");
@@ -382,10 +382,6 @@ let headLoader,localDB;
             xhr.onreadystatechange=async function(){
               if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
                 let content=xhr[method];
-                if(_fileType==="css" && content){
-                  //CSS中的window[.*]替换成全局变量
-                  content=content.replace(/window\[([^\]]*)]/g,(_,_b)=>_global[_b]||"");
-                }
                 //注意某些服务器不会返回etag或者last-modified
                 Object.assign(value,{
                   "value":content,
