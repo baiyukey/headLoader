@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.7
+ * @version : 2.1.8
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -556,8 +556,20 @@ let headLoader,localDB;
       return Object.keys(that.db.temp).length===0 ? false : that.db.temp;
       //console.timeEnd(ct);
     };
-    this.loadItem=async function(_url){
+    this.loadFile=async function(_url){
       that.dataFile=[_url].flat();
+      return await that.run();
+    };
+    this.loadJs=async function(_url){
+      that.dataJs=[_url].flat();
+      return await that.run();
+    };
+    this.loadCss=async function(_url){
+      that.dataCss=[_url].flat();
+      return await that.run();
+    };
+    this.loadFont=async function(_url){//隐藏应用
+      that.dataFont=[_url].flat();
       return await that.run();
     };
     let that=this;//关键字避嫌
