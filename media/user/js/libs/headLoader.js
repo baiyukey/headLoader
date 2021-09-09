@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.8
+ * @version : 2.1.9
  * @copyright : http://www.uielf.com
  */
 let headLoader,localDB;
@@ -363,11 +363,13 @@ let headLoader,localDB;
           });
           if(_io===0){//0：缓存未到期
             that.db.temp[cacheKey]=value;
+            that.returnData.push(value);
             _r("success");
           }
           else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
             //setCache(cacheKey,value);
             that.db.temp[cacheKey]=value;
+            that.returnData.push(value);
             _r("success");
             await that.db.setItem(value);
           }
@@ -389,6 +391,7 @@ let headLoader,localDB;
                 });
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 that.db.temp[cacheKey]=value;
+                that.returnData.push(value);
                 _r("success");
                 await that.db.setItem(value);
               }
@@ -536,6 +539,7 @@ let headLoader,localDB;
     this.db.temp={};
     this.db.getUrl=getUrl;
     this.run=async function(){
+      that.returnData=[];
       that.dataCss=that.dataCss.map(_v=>standardized(_v==="_css" ? modDir : _v,"css"));
       that.dataCss=Array.from(new Set(that.dataCss));//去重
       that.dataJs=that.dataJs.map(_v=>standardized(_v==="_js" ? modDir : _v,"js"));
@@ -551,25 +555,37 @@ let headLoader,localDB;
       await loadThese(that.dataJs,"js");
       await loadThese(that.dataFile,"");
       if(that.showLog) logData();
-      if(typeof (that.callback)==="function") that.callback.call(that,that.db.temp);
+      if(typeof (that.callback)==="function") that.callback.call(that,that.returnData);
       //await that.db.close();
-      return Object.keys(that.db.temp).length===0 ? false : that.db.temp;
+      return that.returnData.length===0 ? false : that.returnData;
       //console.timeEnd(ct);
     };
     this.loadFile=async function(_url){
+      that.dataCss=[];
+      that.dataJS=[];
+      that.dataFont=[];
       that.dataFile=[_url].flat();
       return await that.run();
     };
     this.loadJs=async function(_url){
+      that.dataCss=[];
       that.dataJs=[_url].flat();
+      that.dataFont=[];
+      that.dataFile=[];
       return await that.run();
     };
     this.loadCss=async function(_url){
       that.dataCss=[_url].flat();
+      that.dataJS=[];
+      that.dataFont=[];
+      that.dataFile=[];
       return await that.run();
     };
     this.loadFont=async function(_url){//隐藏应用
+      that.dataCss=[];
+      that.dataJS=[];
       that.dataFont=[_url].flat();
+      that.dataFile=[];
       return await that.run();
     };
     let that=this;//关键字避嫌
