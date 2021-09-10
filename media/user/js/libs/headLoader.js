@@ -476,7 +476,10 @@
           Promises.push(new Promise(runThis));
         });
         Promise.all(Promises).then(()=>{
-          if(that.preload===1) _resolve("success"); //预加载不应用于当前页面
+          if(that.preload===1) {
+            _resolve("success");
+            return false;
+          } //预加载不应用于当前页面
           if(!writeCode) return _resolve("页面写入仅支持js、css、font");
           writeCode(codes);
           _resolve("success");
