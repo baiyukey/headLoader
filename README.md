@@ -104,9 +104,9 @@
    console.log(files.find(_v=>_v.key==="/index.html").value);
    console.log(files.find(_v=>_v.key==="/button.svg").value);
    //同理从缓存中读取JS
-   files=await thisLoader.loadCSS(["/index.js","/button.js"]);
+   files=await thisLoader.loadJs(["/index.js","/button.js"]);
    //同理从缓存中读取CSS
-   files=await thisLoader.loadCSS(["/index.css","/button.css"]);
+   files=await thisLoader.loadCss(["/index.css","/button.css"]);
 ```
 #### 如何实现跨页缓存管理
 ```javascript
