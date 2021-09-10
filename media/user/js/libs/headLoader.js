@@ -14,10 +14,9 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.1.9
+ * @version : 2.2.0
  * @copyright : http://www.uielf.com
  */
-let headLoader,localDB;
 (function(_global){
   let head=document.getElementsByTagName('HEAD').item(0);
   let error=function(){
@@ -58,7 +57,7 @@ let headLoader,localDB;
     };
   };
   let thisHex=new hex();
-  localDB=function(_option){
+  let localDB=function(_option){
     /**
      * 通过indexedDB创建站点缓存仓库
      * @param {String} [_option.database] 缓存仓库名称
@@ -262,6 +261,7 @@ let headLoader,localDB;
     }
     let that=this;
   };
+  _global.localDB=localDB;
   //_global.localDB=localDB;
   let standardized=(_url,_type)=>{
     if(_url && _type) return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${_type})`,``);
@@ -272,7 +272,7 @@ let headLoader,localDB;
       return console.error("模块格式错误");
     }
   };
-  headLoader=function(_val){
+  let headLoader=function(_val){
     let val=_val || {};
     this.dataMin=min;
     this.dataDir=val.dataDir || "";
@@ -363,13 +363,11 @@ let headLoader,localDB;
           });
           if(_io===0){//0：缓存未到期
             that.db.temp[cacheKey]=value;
-            that.returnData.push(value);
             _r("success");
           }
           else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
             //setCache(cacheKey,value);
             that.db.temp[cacheKey]=value;
-            that.returnData.push(value);
             _r("success");
             await that.db.setItem(value);
           }
@@ -391,7 +389,6 @@ let headLoader,localDB;
                 });
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 that.db.temp[cacheKey]=value;
-                that.returnData.push(value);
                 _r("success");
                 await that.db.setItem(value);
               }
@@ -406,7 +403,7 @@ let headLoader,localDB;
     let writeJs=function(_codes){
       if(min!==""){
         Function(Object.values(_codes).join(";"))();//隐藏代码
-        return false;
+        return true;
       }
       let thisTag=document.createElement("script");
       let thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_js"+that.requestVersion;
@@ -456,7 +453,6 @@ let headLoader,localDB;
       head.appendChild(thisTag);
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
-      if(that.preload===1) return true; //预加载不应用于当前页面
       return new Promise((_resolve,_reject)=>{
         let cacheKey;
         let writeCode={
@@ -464,7 +460,6 @@ let headLoader,localDB;
           "CSS":writeCss,
           "FONT":writeFont
         }[_fileType.toUpperCase()];
-        if(!writeCode) return _resolve("页面写入仅支持js、css、font");
         let codes={};
         let Promises=[];
         _modules.forEach((_k)=>{
@@ -472,11 +467,17 @@ let headLoader,localDB;
           let runThis=function(_resolve,_reject){
             cacheKey=getCacheKey(_k,_fileType);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
             codes[_k]=that.db.temp[cacheKey] ? that.db.temp[cacheKey].value : "";
+            that.returnData.push({
+              key:_k,
+              value:codes[_k]
+            });
             _resolve("success");
           };
           Promises.push(new Promise(runThis));
         });
         Promise.all(Promises).then(()=>{
+          if(that.preload===1) _resolve("success"); //预加载不应用于当前页面
+          if(!writeCode) return _resolve("页面写入仅支持js、css、font");
           writeCode(codes);
           _resolve("success");
         }).catch(_err=>_reject(_err));
@@ -536,7 +537,8 @@ let headLoader,localDB;
     this.requestVersion=getVersion(this.dataLifecycle);
     //indexDB实例
     this.db=new localDB({version:this.requestVersion});
-    this.db.temp={};
+    this.db.temp={};//页内缓存数据
+    this.returnData={};//用于run返回的数据
     this.db.getUrl=getUrl;
     this.run=async function(){
       that.returnData=[];
@@ -565,6 +567,7 @@ let headLoader,localDB;
       that.dataJS=[];
       that.dataFont=[];
       that.dataFile=[_url].flat();
+      that.preload=1;
       return await that.run();
     };
     this.loadJs=async function(_url){
@@ -572,6 +575,7 @@ let headLoader,localDB;
       that.dataJs=[_url].flat();
       that.dataFont=[];
       that.dataFile=[];
+      that.preload=1;
       return await that.run();
     };
     this.loadCss=async function(_url){
@@ -579,6 +583,7 @@ let headLoader,localDB;
       that.dataJS=[];
       that.dataFont=[];
       that.dataFile=[];
+      that.preload=1;
       return await that.run();
     };
     this.loadFont=async function(_url){//隐藏应用
@@ -586,10 +591,12 @@ let headLoader,localDB;
       that.dataJS=[];
       that.dataFont=[_url].flat();
       that.dataFile=[];
+      that.preload=1;
       return await that.run();
     };
     let that=this;//关键字避嫌
   };
+  _global.headLoader=headLoader;
   //_global.headLoader=headLoader;
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
   let thisScript;
