@@ -107,10 +107,6 @@
    files=await thisLoader.loadCSS(["/index.js","/button.js"]);
    //同理从缓存中读取CSS
    files=await thisLoader.loadCSS(["/index.css","/button.css"]);
-   //后续重复读取
-   let button=await thisLoader.db.getValue("/button.svg");
-   let index=await thisLoader.db.getValue("/index.html");
-   let icon=await thisLoader.db.getValue("//icon.svg");
 ```
 #### 如何实现跨页缓存管理
 ```javascript
