@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.2.0
+ * @version : 2.2.4
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -407,16 +407,18 @@
       }
       let thisTag=document.createElement("script");
       let thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_js"+that.requestVersion;
+      thisTagName=thisTagName.split("|")[0].replace(/(\.css)|(\.min)/g,"");
       //setAttribute(thisTag,thisTagName.split("|").splice(1));//用于js标签自定义属性，例如_url=?id=888|data-value=999这类的属性定义
       thisTag.setAttribute("type","text/javascript");
-      thisTag.setAttribute("data-name",thisTagName.split("|")[0].replace(".js","")+min);
+      thisTag.setAttribute("data-name",thisTagName);
       thisTag.innerHTML=Object.values(_codes).join(";");
       head.appendChild(thisTag);
     };//往页面写入js
     let writeCss=function(_codes){
-      let thisTag,thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_js"+that.requestVersion;
+      let thisTag,thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_css"+that.requestVersion;
+      thisTagName=thisTagName.split("|")[0].replace(/(\.css)|(\.min)/g,"");
       if(min!==""){
-        thisTag=document.getElementsByTagName('style').item(0);
+        thisTag=document.querySelector(`[data-name=${thisTagName}]`);
         if(thisTag){
           thisTag.innerHTML+=Object.values(_codes).join(" ");
           return false;
@@ -425,7 +427,7 @@
       thisTag=document.createElement("style");
       //setAttribute(thisTag,thisTagName.split("|").splice(1));
       thisTag.setAttribute("type","text/css");
-      thisTag.setAttribute("data-name",thisTagName.split("|")[0].replace(".css","")+min);
+      thisTag.setAttribute("data-name",thisTagName);
       thisTag.innerHTML=Object.values(_codes).join(" ");
       head.appendChild(thisTag);
     };//往页面写入css
