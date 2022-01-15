@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.2.4
+ * @version : 2.2.5
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -418,7 +418,7 @@
       let thisTag,thisTagName=Object.keys(_codes).length===1 ? Object.keys(_codes)[0] : "_css"+that.requestVersion;
       thisTagName=thisTagName.split("|")[0].replace(/(\.css)|(\.min)/g,"");
       if(min!==""){
-        thisTag=document.querySelector(`[data-name=${thisTagName}]`);
+        thisTag=head.querySelector(`[data-name=${thisTagName}]`);
         if(thisTag){
           thisTag.innerHTML+=Object.values(_codes).join(" ");
           return false;
