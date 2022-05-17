@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.2.6
+ * @version : 2.2.8
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -114,7 +114,8 @@
               let objectStore=_global.localDBResult.createObjectStore(_tableName,{keyPath:"key"});
               //非关系型数据库的特点，表中的每个字段存为一个子表，美其名曰“索引”(createIndex)
               //在往子表里加数据时只需增加到Value字段,所以Key字段的值引用Value中的某个属性值即可，也可以让它自动生成
-              //createIndex3个参数：主键，索引属性，主键是否唯一
+              //建立索引（密钥）createIndex3个参数：主键，索引属性，主键是否唯一
+              //.createIndex(_c,["key","version"]建立多个索引值，为了以后扩展，用了中括号
               option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,["key"],{unique:true}));
             }
           }
@@ -126,11 +127,7 @@
       if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
       return new Promise((_resolve,_reject)=>{
         let runThis=function(){
-          if(_global.localDBStatus===0){
-            _resolve("success");
-            return;
-          }
-          if(_global.localDBResult!==null) _global.localDBResult.close();
+          _global.localDBResult && _global.localDBResult.close();
           _global.localDBStatus=0;
           //if(reLog) console.log(`${option.database}已关闭`);
           _resolve("success");
@@ -183,7 +180,7 @@
           version:option.version
         };
         let method="add";
-        await getItem(defaultArgument.key,"data").then(_v=>{
+        await getItem(defaultArgument.key).then(_v=>{
           method=(_v ? "put" : "add");
         }).catch(_v=>{
           method="add";
@@ -194,7 +191,9 @@
           //console.log(`${thisData.key}数据(${method})${method==="add" ? "写入" : "更新"}成功`);
           _resolve(thisData);
         };
-        setData.onerror=_e=>_reject(_e);
+        setData.onerror=_e=>{
+          _reject(_e.target.error);
+        };
       });
     };
     /**
@@ -210,9 +209,10 @@
           await openDB();
           let tableName=_tableName || "data";
           let table=_global.localDBResult.transaction(tableName,'readonly').objectStore(tableName);
-          let list=table.index('key');
           let keyName=(min===".min" ? thisHex.encode(_key) : _key);
-          let request=list.get(IDBKeyRange.only([keyName]));
+          let list=table.index("key");//获取索引集合
+          //从索引中获取数据，索引值在数据库建立时可能是多个，所以这里要用到[]格式,以容纳多个值，但此数据仅一个索引值
+          let request=list.get([keyName]);
           request.onsuccess=_e=>{
             result=_e.target.result;
             if(result) Object.assign(result,{"key":_key});
@@ -280,13 +280,13 @@
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
     this.dataFile=val.dataFile || [];
-    this.dataLifecycle=this.dataLifecycle && this.dataLifecycle>=0 ? this.dataLifecycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
+    this.dataLifecycle=val.dataLifecycle || (min===".min" ? 24 : 0);
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
-    this.requestVersion="";//请求版本,每次run返回一个新的
+    this.requestVersion=getVersion(this.dataLifecycle);//请求版本,每次run返回一个新的
     let isHttp=_thisMode=>/^http[s]?:\/\//.test(_thisMode);
     let setAttribute=function(_node,_property){
       if(_property.length>0){
@@ -327,9 +327,9 @@
       return new Promise((_r,_rj)=>{
         //0：缓存未到期
         //1：缓存已到期，但服务器文件未变化，继续使用缓存
-        //2：缓存已到期或不存在，需要从服务器获取
+        //2：缓存已到期，服务器文件已修改，需要从服务器获取
         if(!_value) return _r(2);
-        if(_value.version!==that.requestVersion){//缓存过期
+        if(Number(_value.version)<Number(that.requestVersion)){//缓存过期
           //先读取文件头的etag判断文件是否已修改
           if(_value.etag==="") _r(2);
           else{
@@ -369,9 +369,10 @@
             //setCache(cacheKey,value);
             that.db.temp[cacheKey]=value;
             _r("success");
+            value.version=that.requestVersion;
             await that.db.setItem(value);
           }
-          else if(_io===2){//2：缓存已到期或不存在，需要从服务器获取
+          else if(_io===2){//2：缓存已到期或已更新，需要从服务器获取
             let xhr=new XHR(),fileType=getType(value.key),method="responseText";
             xhr.open("GET",url);
             if(!["js","ts","css","svg","text","xml","json","html","htm"].includes(fileType)){
@@ -385,7 +386,8 @@
                 //注意某些服务器不会返回etag或者last-modified
                 Object.assign(value,{
                   "value":content,
-                  "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || ""
+                  "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "",
+                  "version":that.requestVersion
                 });
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 that.db.temp[cacheKey]=value;
@@ -478,7 +480,7 @@
           Promises.push(new Promise(runThis));
         });
         Promise.all(Promises).then(()=>{
-          if(that.preload===1) {
+          if(that.preload===1){
             _resolve("success");
             return false;
           } //预加载不应用于当前页面
@@ -539,13 +541,18 @@
       }
       return new Promise(that.multiLoad ? multiLoad(_modules,_fileType) : serialLoad(_modules,_fileType));//线上并行，线下串行（可调试）
     };//加载
-    this.requestVersion=getVersion(this.dataLifecycle);
     //indexDB实例
     this.db=new localDB({version:this.requestVersion});
     this.db.temp={};//页内缓存数据
-    this.returnData={};//用于run返回的数据
     this.db.getUrl=getUrl;
+    this.returnData={};//用于run返回的数据
     this.run=async function(){
+      that.dataLifecycle=that.dataLifecycle && that.dataLifecycle>=0 ? that.dataLifecycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
+      that.requestVersion=getVersion(that.dataLifecycle);
+      that.db=new localDB({version:that.requestVersion});
+      this.db.temp={};//页内缓存数据
+      this.db.getUrl=getUrl;
+      this.returnData={};//用于run返回的数据
       that.returnData=[];
       that.dataCss=that.dataCss.map(_v=>standardized(_v==="_css" ? modDir : _v,"css"));
       that.dataCss=Array.from(new Set(that.dataCss));//去重
@@ -564,7 +571,7 @@
       if(that.showLog) logData();
       if(typeof (that.callback)==="function") that.callback.call(that,that.returnData);
       //await that.db.close();
-      return that.returnData.length===0 ? false : that.returnData;
+      return that.returnData.length===0 ? false : (that.returnData.length===1 ? that.returnData[0] : that.returnData);
       //console.timeEnd(ct);
     };
     this.loadFile=async function(_url){
@@ -660,12 +667,12 @@
   (async _=>{
     if(document.getElementsByTagName('HEAD').length===0) return false;
     let initLoader=new headLoader();
+    if(dataLifecycle) initLoader.dataLifecycle=dataLifecycle;
     if(dataDir) initLoader.dataDir=dataDir;
-    initLoader.dataCss=dataCss;
-    initLoader.dataJs=dataJs;
-    initLoader.dataFont=dataFont;
-    initLoader.dataFile=dataFile;
-    initLoader.dataLifecycle=dataLifecycle;
+    if(dataCss.length>0) initLoader.dataCss=dataCss;
+    if(dataJs.length>0) initLoader.dataJs=dataJs;
+    if(dataFont.length>0) initLoader.dataFont=dataFont;
+    if(dataFile.length>0) initLoader.dataFile=dataFile;
     initLoader.showLog=false;//是否显示统计
     await initLoader.run();
   })();

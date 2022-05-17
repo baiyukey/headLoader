@@ -5,7 +5,7 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.2.6,他有如下特点：
+### 当前版本为v2.2.8,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
     2.支持"js","css","svg","text","xml","json","html","htm"等文本文件的读取；
     3.支持图片、视频、字体、图标库等二进制文件类型的读取；
@@ -66,8 +66,9 @@
    // Function | 外部命令法可以定义回调函数，参数为请求的数据结果 | 仅用于命令行模式 | 可选项
    loader.callback=function(_data){console.log(_data)}
    await loader.run()
-   // {"/media/css/public/css.css":value, ...} 或 false
-   // let result=await loader.run();
+   // run()结果只有一个值时返回：{"/media/css/public/css.css":value, ...}
+   // run()结果有多个值时返回：[{"/media/css/public/css.css":value, ...},...]
+   // run()结果没有值时返回：false
 </script>
 ```
 #### 当然,您也可以写成这样
@@ -86,8 +87,6 @@
       callback:function(_data){console.log(_data)}
    });
    await loader.run()
-   // {"/media/css/public/css.css":value, ...} 或 false
-   // let result=await loader.run();
 </script>
 ```
 #### 更多类型加载
