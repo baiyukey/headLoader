@@ -14,23 +14,23 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.2.8
+ * @version : 2.2.9
  * @copyright : http://www.uielf.com
  */
 (function(_global){
-  let head=document.getElementsByTagName('HEAD').item(0);
-  let error=function(){
+  const head=document.getElementsByTagName('HEAD').item(0);
+  const error=function(){
     document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
   };
   if(!_global.Promise) return _global.onload=error;//所有IE均不支持
-  let XHR=_global.XMLHttpRequest;
-  let min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
-  let getVersion=function(_hours){
+  const XHR=_global.XMLHttpRequest;
+  const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+  const getVersion=function(_hours){
     let newTime=new Date().getTime()+28800000;//new Date(0) 相当于 1970/1/1 08:00:00
     let stepTime=_hours>0 ? 1000*60*60*_hours : 1;//默认1970年以来每_hours个小时为一个值
     return String(new Date(newTime-newTime%stepTime+stepTime).getTime()-28800000);
   };
-  let getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
+  const getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
   let hex=function(){
     let bet="";
     for(let i=48; i<=122; i++){
@@ -78,6 +78,18 @@
       version:getVersion(min===".min" ? 24 : 0)
     };
     Object.assign(option,_option);
+    const arrayBufferToBase64=(_buffer,_ext)=>{
+      let binary=[];
+      let bytes=new Uint8Array(_buffer);
+      for(let i=0; i<bytes.byteLength; i++){
+        binary.push(String.fromCharCode(bytes[i]));
+      }
+      return `data:image/${_ext};base64,${window.btoa(binary.join(''))}`;
+    };
+    const getExt=_=>{
+      let thisExt=_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");
+      return _!==thisExt ? thisExt : false;
+    };
     _global.localDBResult=_global.localDBResult || null;
     //_global.localDBResult的状态 0:关闭，1:打开
     _global.localDBStatus=_global.localDBStatus || 0;
@@ -246,6 +258,11 @@
       let module=standardized(_module,"js");
       return await getItem(that.getUrl(module,"js"),_tableName || "data");
     };
+    const getItemBase64=async function(_key){
+      let thisResult=await getItem(_key);
+      if(!thisResult) return false;
+      return arrayBufferToBase64(thisResult.value,getExt(_key) || "jpeg");
+    };
     if(dbAble){
       this.open=openDB;
       this.close=closeDB;
@@ -257,6 +274,7 @@
       this.getCss=getItemCss;
       this.getHtml=getItemHtml;
       this.getJs=getItemJs;
+      this.getBase64=getItemBase64;
       this.temp={};
     }
     let that=this;

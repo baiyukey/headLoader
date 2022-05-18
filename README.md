@@ -5,7 +5,7 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.2.8,他有如下特点：
+### 当前版本为v2.2.9,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
     2.支持"js","css","svg","text","xml","json","html","htm"等文本文件的读取；
     3.支持图片、视频、字体、图标库等二进制文件类型的读取；
@@ -95,17 +95,21 @@
    //支持二进制文件类型但不限于这些类型："jpg","png","woff"等
    let thisLoader=new headLoader();
    let files;
-   //读取一个文件
+   //读取一个文件，第一次从网络地址读取，第二次从indexedDB中读取，如果数据过期，会自动更新。
    files=await thisLoader.loadFile("/button.svg");
-   console.log(files[0].value);
-   //从缓存中读取多个文件
-   files=await thisLoader.loadFile(["/index.html","/button.svg"]);
-   console.log(files.find(_v=>_v.key==="/index.html").value);
-   console.log(files.find(_v=>_v.key==="/button.svg").value);
-   //同理从缓存中读取JS
+   console.log(files.value);
+   //同理缓存JS并返回所有文件代码
    files=await thisLoader.loadJs(["/index.js","/button.js"]);
-   //同理从缓存中读取CSS
+   //同理缓存CSS并返回所有文件代码
    files=await thisLoader.loadCss(["/index.css","/button.css"]);
+   //缓存并读取其它类型文件
+   files=await thisLoader.loadFile(["/index.html","/button.svg","/a.jpg"]);
+   //从files结果中检索文件代码
+   console.log(files.find(_v=>_v.key==="/index.html").value);
+   //或者thisLoader.db.getValue(_src)方法可返回文件代码
+   console.log(thisLoader.db.getValue("/button.svg"));
+   //thisLoader.db.getBase64(_src)方法可返回图片的base64编码
+   console.log(thisLoader.db.getBase64("/a.jpg"));
 ```
 #### 如何实现跨页缓存管理
 ```javascript
