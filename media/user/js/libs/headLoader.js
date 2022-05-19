@@ -14,7 +14,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.3.0
+ * @version : 2.3.1
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -26,9 +26,10 @@
   const XHR=_global.XMLHttpRequest;
   const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   const getVersion=function(_hours){
-    let newTime=new Date().getTime()+28800000;//new Date(0) 相当于 1970/1/1 08:00:00
-    let stepTime=_hours>0 ? 1000*60*60*_hours : 1;//默认1970年以来每_hours个小时为一个值
-    return new Date(newTime-newTime%stepTime+stepTime).getTime()-28800000;
+    if(!_hours||_hours<=0) return new Date().getTime();
+    let start=new Date("2000/1/1").getTime();
+    let plus=Math.ceil((new Date().getTime()-start)/(1000*60*60*_hours));
+    return start+plus*1000*60*60*_hours
   };
   const getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
   let hex=function(){
