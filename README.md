@@ -5,7 +5,7 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.3.1,他有如下特点：
+### 当前版本为v2.3.2,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
     2.支持"js","css","svg","text","xml","json","html","htm"等文本文件的读取；
     3.支持图片、视频、字体、图标库等二进制文件类型的读取；
@@ -56,7 +56,7 @@
    // Array | 支持更多类型的资源，例如html、svg等，默认为空数组"[]" | 可选项
    loader.dataFile=['html/a.html','svg/a.svg'];
    // Number | 缓存生命周期，单位小时，默认24 | 可选项
-   loader.dataLifecycle=24;
+   loader.lifeCycle=24;
    // Boolean | 线下与线上路径是否自动切换，例如"/js/"转为"/js.min/"，"/a.js"转为"a.min.js"，默认False | 可选项
    loader.dataActive=false;
    // Boolean | 是否显示加载统计，默认false | 可选项
@@ -80,7 +80,7 @@
       dataJs:['libs/jquery-3.1.0','libs/jquery.elfAlert','_js'],
       dataFont:['fonts/a.woff','fonts/b.woff'],
       dataFile:['html/a.html','svg/a.svg'],
-      dataLifecycle:2,
+      lifeCycle:2,
       dataActive:false
       showLog:false,
       preload:0,
@@ -138,7 +138,7 @@
         data-font    相当于 dataFont
         data-file    相当于 dataFile
         data-src    相当于 dataSrc
-        data-lifecycle    相当于 dataLifecycle
+        data-lifecycle    相当于 lifeCycle
         data-active    相当于 dataActive
     6.如果想预加载资源以备后面的页面使用时，可以设置preload参数为1，1为预加载功能开启，0为加载后立即应用于当前页面，默认为0
     8.命令行语句法可以定义回调函数callback,标签属性定义法不支持定义回调函数
