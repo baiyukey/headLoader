@@ -9,12 +9,13 @@
  * @param {Array} [this.dataFont] -字体资源路径
  * @param {Array} [this.dataFile] -其它资源路径
  * @param {Number} [this.lifeCycle=24] -缓存生成周期，单位小时，默认24
+ * @param {Number} [this.cycleDelay=0] -每次缓存延长时间，单位小时，默认0
  * @param {Boolean} [this.dataActive=false] -是否自动切换线上与线下代码路径，默认否
  * @param {Function} [this.callback=null] -所有资源加载完成后的回调函数 (仅命令行模式可用)
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.3.2
+ * @version : 2.3.3
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -25,11 +26,11 @@
   if(!_global.Promise) return _global.onload=error;//所有IE均不支持
   const XHR=_global.XMLHttpRequest;
   const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
-  const getVersion=function(_hours){
-    if(!_hours || _hours<=0) return new Date().getTime();
+  const getVersion=function(_hours,_delayHours){
+    if(!_hours || _hours<=0) return new Date().getTime()+(_delayHours||0)*1000*60*60;
     let start=new Date("2000/1/1").getTime();
     let plus=Math.ceil((new Date().getTime()-start)/(1000*60*60*_hours));
-    return start+plus*1000*60*60*_hours;
+    return start+plus*1000*60*60*_hours+(_delayHours||0)*1000*60*60;
   };
   const getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
   let hex=function(){
@@ -300,12 +301,13 @@
     this.dataFont=val.dataFont || [];
     this.dataFile=val.dataFile || [];
     this.lifeCycle=val.lifeCycle || false;
+    this.cycleDelay=val.cycleDelay || 0;
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
-    this.requestVersion=this.lifeCycle ? getVersion(this.lifeCycle) : getVersion(min===".min" ? 0 : 24);//请求版本,每次run返回一个新的
+    this.requestVersion=this.lifeCycle ? getVersion(this.lifeCycle,this.cycleDelay) : getVersion((min===".min" ? 24 : 0),this.cycleDelay);//请求版本,每次run返回一个新的
     let isHttp=_thisMode=>/^http[s]?:\/\//.test(_thisMode);
     let setAttribute=function(_node,_property){
       if(_property.length>0){
@@ -567,7 +569,7 @@
     this.returnData={};//用于run返回的数据
     this.run=async function(){
       that.lifeCycle=that.lifeCycle && that.lifeCycle>=0 ? that.lifeCycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
-      that.requestVersion=getVersion(that.lifeCycle);
+      that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
       that.db=new localDB({version:that.requestVersion});
       this.db.temp={};//页内缓存数据
       this.db.getUrl=getUrl;
@@ -625,8 +627,8 @@
       that.preload=1;
       return await that.run();
     };
-    this.nextLife=function(_hours){
-      return new Date(getVersion(_hours)).toLocaleString();
+    this.nextLife=function(_hours,_delayHours){
+      return new Date(getVersion(_hours,_delayHours)).toLocaleString();
     };
     let that=this;//关键字避嫌
   };
@@ -640,11 +642,13 @@
     dataFile=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
-  let lifeCycle;//缓存截止时间戳
+  let lifeCycle;//缓存失效时间周期
+  let cycleDelay=0;//缓存失效时间延迟
   let mediaLength=1;//文件个数，用于统计页面加载多少个文件
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
   thisScript=document.currentScript;
   let reLog=console.log && min!==".min";
+  let showLog=false;
   let pathname=window===window.top ? location.pathname : window.frameElement.getAttribute("src") || window.frameElement["pathname"] || "/404.html";
   let modDir=pathname.replace(/^(.*\/)(.*)(\.html)([?]*)(.*)$/,"$1$2$4$5");
   if(modDir.substr(-1)==="/") modDir+="index";
@@ -657,6 +661,9 @@
   }
   if(thisScript.hasAttribute("data-lifecycle")){
     lifeCycle=Number(thisScript.getAttribute("data-lifecycle"));
+  }
+  if(thisScript.hasAttribute("data-cycledelay")){
+    cycleDelay=Number(thisScript.getAttribute("data-cycledelay"));
   }
   else{
     if(reLog) console.log(`%c友情提示:script标签未设置"data-lifeCycle"属性,默认为0(开发环境)或24小时(线上环境）.`,"color:#69F;");
@@ -685,17 +692,21 @@
   if(thisScript.hasAttribute("data-file")){
     dataFile=thisScript.getAttribute("data-file").split(",");//.replace(/_js/g,modDir);
   }
+  if(thisScript.hasAttribute("data-showlog")){
+    showLog=["true",""].includes(thisScript.getAttribute("data-showlog"));
+  }
   if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
   (async _=>{
     if(document.getElementsByTagName('HEAD').length===0) return false;
     let initLoader=new headLoader();
     if(lifeCycle) initLoader.lifeCycle=lifeCycle;
+    initLoader.cycleDelay=cycleDelay;
     if(dataDir) initLoader.dataDir=dataDir;
     if(dataCss.length>0) initLoader.dataCss=dataCss;
     if(dataJs.length>0) initLoader.dataJs=dataJs;
     if(dataFont.length>0) initLoader.dataFont=dataFont;
     if(dataFile.length>0) initLoader.dataFile=dataFile;
-    initLoader.showLog=false;//是否显示统计
+    initLoader.showLog=showLog;//是否显示统计
     await initLoader.run();
   })();
 })((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);
