@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.3.4
+ * @version : 2.3.5
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -633,6 +633,7 @@
     let that=this;//关键字避嫌
   };
   _global.headLoader=headLoader;
+  _global.hLoader=headLoader;
   //_global.headLoader=headLoader;
   //_global.headLoader=_global.headLoader ? _global.headLoader : headLoader;
   let thisScript;
