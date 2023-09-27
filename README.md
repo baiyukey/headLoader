@@ -5,7 +5,7 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.3.4,他有如下特点：
+### 当前版本为v2.3.5,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
     2.支持"js","css","svg","text","xml","json","html","htm"等文本文件的读取；
     3.支持图片、视频、字体、图标库等二进制文件类型的读取；
@@ -44,7 +44,7 @@
 ```html
 <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
 <script type="text/javascript">
-   let loader=new headLoader();
+   let loader=new hLoader();
    // String | js、css资源路径，默认"./" | 可选项
    loader.dataDir="/media/";
    // Array | CSS资源，默认为空数组"[]" | 可选项
@@ -76,7 +76,7 @@
 #### 当然,您也可以写成这样
 ```html
 <script type="text/javascript">
-   let loader=new headLoader({
+   let loader=new hLoader({
       dataDir:"/media/",
       dataCss:['public/css1','public/css2','_css'],
       dataJs:['libs/jquery-3.1.0','libs/jquery.elfAlert','_js'],
@@ -95,7 +95,7 @@
 ```javascript
    //支持的文本文件类型有："js","css","svg","text","xml","json","html","htm"等
    //支持二进制文件类型但不限于这些类型："jpg","png","woff"等
-   let thisLoader=new headLoader();
+   let thisLoader=new hLoader();
    let files;
    //读取一个文件，第一次从网络地址读取，第二次从indexedDB中读取，如果数据过期，会自动更新。
    files=await thisLoader.loadFile("/button.svg");
@@ -116,7 +116,7 @@
 #### 如何实现跨页缓存管理
 ```javascript
    //a.html和b.html的JS程序需要先各自实例化一个headLoader
-   let loader=new headLoader();
+   let loader=new hLoader();
    //仅在报错信息为数据库未打开时使用，整个网站只调用一次即可
    await loader.db.open();
    //在任意一个页面缓存写入使用命令：loader.db.setValue(key,value)
