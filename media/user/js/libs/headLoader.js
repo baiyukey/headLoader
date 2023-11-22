@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.3.5
+ * @version : 2.3.6
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -27,7 +27,8 @@
   const XHR=_global.XMLHttpRequest;
   const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   const getVersion=function(_hours,_delayHours){
-    if(!_hours || _hours<=0) return new Date().getTime()+(_delayHours || 0)*1000*60*60;
+    //开发模式直接返回
+    if(min==="") return (new Date().getTime()+(_delayHours || 0)*1000*60*60);
     let start=new Date("2000/1/1").getTime();
     let plus=Math.ceil((new Date().getTime()-start)/(1000*60*60*_hours));
     return start+plus*1000*60*60*_hours+(_delayHours || 0)*1000*60*60;
@@ -300,14 +301,14 @@
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
     this.dataFile=val.dataFile || [];
-    this.lifeCycle=val.lifeCycle || false;
+    this.lifeCycle=val.lifeCycle || 24;
     this.cycleDelay=val.cycleDelay || 0;
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
-    this.requestVersion=this.lifeCycle ? getVersion(this.lifeCycle,this.cycleDelay) : getVersion((min===".min" ? 24 : 0),this.cycleDelay);//请求版本,每次run返回一个新的
+    this.requestVersion=getVersion(this.lifeCycle,this.cycleDelay);//请求版本,每次run返回一个新的
     let isHttp=_thisMode=>/^http[s]?:\/\//.test(_thisMode);
     let setAttribute=function(_node,_property){
       if(_property.length>0){
@@ -373,6 +374,7 @@
           return _r("success");
         }
         let url=getUrl(_module,_fileType)+(_module.indexOf("?")>=0 ? "&v=" : "?v=")+that.requestVersion;//扩展名不一定是最后的字符
+        console.log(url);
         let cacheKey=getCacheKey(_module,_fileType);
         let getXHR=async function(_io,_value){
           let value={};
@@ -568,7 +570,7 @@
     this.db.getUrl=getUrl;
     this.returnData={};//用于run返回的数据
     this.run=async function(){
-      that.lifeCycle=that.lifeCycle && that.lifeCycle>=0 ? that.lifeCycle : (min===".min" ? 24 : 0); //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
+      that.lifeCycle=that.lifeCycle===0 ? 0 : 24; //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
       that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
       that.db=new localDB({version:that.requestVersion});
       this.db.temp={};//页内缓存数据
@@ -643,7 +645,7 @@
     dataFile=[];
   let dataDir;
   let dataActive=false;//是否自动切换线上与线下代码路径，默认否
-  let lifeCycle;//缓存失效时间周期
+  let lifeCycle=24;//缓存失效时间周期
   let cycleDelay=0;//缓存失效时间延迟
   let mediaLength=1;//文件个数，用于统计页面加载多少个文件
   let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
@@ -700,7 +702,7 @@
   (async _=>{
     if(document.getElementsByTagName('HEAD').length===0) return false;
     let initLoader=new headLoader();
-    if(lifeCycle) initLoader.lifeCycle=lifeCycle;
+    initLoader.lifeCycle=lifeCycle;
     initLoader.cycleDelay=cycleDelay;
     if(dataDir) initLoader.dataDir=dataDir;
     if(dataCss.length>0) initLoader.dataCss=dataCss;
