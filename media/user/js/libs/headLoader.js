@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.3.7
+ * @version : 2.3.8
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -308,7 +308,6 @@
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
     this.showLog=val.showLog || false;//默认不显示加载统计
     this.preload=typeof (val.preload)!=="undefined" ? val.preload : 0;//是否是预加载，预加载不应用于当前页面
-    this.requestVersion=getVersion(this.lifeCycle,this.cycleDelay);//请求版本,每次run返回一个新的
     let isHttp=_thisMode=>/^http[s]?:\/\//.test(_thisMode);
     let setAttribute=function(_node,_property){
       if(_property.length>0){
@@ -569,7 +568,6 @@
     this.db.getUrl=getUrl;
     this.returnData={};//用于run返回的数据
     this.run=async function(){
-      that.lifeCycle=that.lifeCycle===0 ? 0 : 24; //Number | 缓存代码的生命周期，单位小时，默认24 | 可选项
       that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
       that.db=new localDB({version:that.requestVersion});
       this.db.temp={};//页内缓存数据
@@ -596,7 +594,7 @@
       return that.returnData.length===0 ? false : (that.returnData.length===1 ? that.returnData[0] : that.returnData);
       //console.timeEnd(ct);
     };
-    this.loadFile=async function(_url){
+    this.loadFile=async function(_url,_lifeCycle){
       that.dataCss=[];
       that.dataJS=[];
       that.dataFont=[];
@@ -629,7 +627,9 @@
       return await that.run();
     };
     this.nextLife=function(_hours,_delayHours){
-      return new Date(getVersion(_hours,_delayHours)).toLocaleString();
+      let hours=_hours || that.lifeCycle;
+      let delayHours=_delayHours || that.cycleDelay;
+      return new Date(getVersion(hours,delayHours)).toLocaleString();
     };
     let that=this;//关键字避嫌
   };
