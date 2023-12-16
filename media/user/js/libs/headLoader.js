@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.0
+ * @version : 2.3.9
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -420,7 +420,7 @@
                 if(that.showLog) mediaLength++;//增加一次资源加载次数
                 that.db.temp[cacheKey]=value;
                 _r(`${value.key} 404 error!`);
-                //await that.db.setItem(value);//数据未成功获取时不写入缓存数据库，以免影响下次读取
+                await that.db.setItem(value);
               }
             };
             xhr.onerror=_e=>_ri(_e);
