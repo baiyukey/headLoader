@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.3.8
+ * @version : 2.3.9
  * @copyright : http://www.uielf.com
  */
 (function(_global){
@@ -366,7 +366,7 @@
       });
     };
     let loadXHR=function(_module,_fileType){
-      return new Promise(_r=>{
+      return new Promise((_r,_ri)=>{
         if(isHttp(_module)){
           if(_fileType==="js") linkJs(_module);
           else if(_fileType==="css") linkCss(_module);
@@ -415,7 +415,15 @@
                 _r("success");
                 await that.db.setItem(value);
               }
+              else if(Number(xhr.status)===404){
+                value.value=value.key;//404错误将皱键值赋予数值以方便判断
+                if(that.showLog) mediaLength++;//增加一次资源加载次数
+                that.db.temp[cacheKey]=value;
+                _r(`${value.key} 404 error!`);
+                await that.db.setItem(value);
+              }
             };
+            xhr.onerror=_e=>_ri(_e);
           }
         };
         that.db.getItem(cacheKey).then((_value)=>{
