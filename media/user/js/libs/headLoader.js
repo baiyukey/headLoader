@@ -15,10 +15,11 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.0
+ * @version : 2.4.1
  * @copyright : http://www.uielf.com
  */
-(function(_global){
+const headLoaderSource=function(){
+  const _global=(window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window;
   const head=document.getElementsByTagName('HEAD').item(0);
   const error=function(){
     document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
@@ -728,4 +729,6 @@
     }
     await initLoader.run();
   })();
-})((window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window);
+};
+headLoaderSource();
+getHeaderLoader=_=>`function _asyncToGenerator(e){return function(){var t=e.apply(this,arguments);return new Promise(function(e,n){return function a(r,o){try{var s=t[r](o),i=s.value}catch(e){return void n(e)}if(!s.done)return Promise.resolve(i).then(function(e){a("next",e)},function(e){a("throw",e)});e(i)}("next")})}} const headLoaderSource=${headLoaderSource};headLoaderSource()`;
