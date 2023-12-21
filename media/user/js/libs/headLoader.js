@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.1
+ * @version : 2.4.2
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -26,7 +26,7 @@ const headLoaderSource=function(){
   };
   if(!_global.Promise) return _global.onload=error;//所有IE均不支持
   const XHR=_global.XMLHttpRequest;
-  const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+  const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)|(127.0.0.1)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   const getVersion=function(_hours,_delayHours){
     //开发模式直接返回
     if(min==="") return (new Date().getTime()+(_delayHours || 0)*1000*60*60);
