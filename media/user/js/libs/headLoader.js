@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.2
+ * @version : 2.4.3
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -26,7 +26,7 @@ const headLoaderSource=function(){
   };
   if(!_global.Promise) return _global.onload=error;//所有IE均不支持
   const XHR=_global.XMLHttpRequest;
-  const min=/^((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)|(127.0.0.1)$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+  const min=/^(((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)|(127.0.0.1))$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
   const getVersion=function(_hours,_delayHours){
     //开发模式直接返回
     if(min==="") return (new Date().getTime()+(_delayHours || 0)*1000*60*60);
@@ -295,15 +295,15 @@ const headLoaderSource=function(){
     }
   };
   let headLoader=function(_val){
-    let val=_val || {};
+    let val=typeof(_val)!=="undefined" ? _val : {};
     this.dataMin=min;
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
     this.dataFile=val.dataFile || [];
-    this.lifeCycle=val.lifeCycle || 24;
-    this.cycleDelay=val.cycleDelay || 0;
+    this.lifeCycle=typeof(val.lifeCycle)==="object" ? val.lifeCycle[0] :  (val.lifeCycle || 24);
+    this.cycleDelay=typeof(val.lifeCycle)==="object" ? val.lifeCycle[1] : (val.cycleDelay || 0);
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
@@ -577,6 +577,10 @@ const headLoaderSource=function(){
     this.db.getUrl=getUrl;
     this.returnData={};//用于run返回的数据
     this.run=async function(){
+      if(typeof(this.lifeCycle)==="object"){
+        that.lifeCycle=this.lifeCycle[0];
+        that.cycleDelay=this.lifeCycle[1]
+      }
       that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
       that.db=new localDB({version:that.requestVersion});
       this.db.temp={};//页内缓存数据
