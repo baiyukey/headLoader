@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.3
+ * @version : 2.4.4
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -383,6 +383,11 @@ const headLoaderSource=function(){
             "etag":_value ? _value.etag : "",
             "version":_value ? _value.version : that.requestVersion
           });
+          let reError=function(_xhr,_info){
+            _xhr.abort();
+            if(that.showLog) mediaLength++;//增加一次资源加载次数
+            _r(_info);
+          };
           if(_io===0){//0：缓存未到期
             that.db.temp[cacheKey]=value;
             _r("success");
@@ -403,7 +408,8 @@ const headLoaderSource=function(){
             } //把异步获取类型改为arraybuffer二进制类型
             xhr.send();
             xhr.onreadystatechange=async function(){
-              if(Number(xhr.readyState)===4 && Number(xhr.status)===200){
+              if (Number(xhr.readyState)!==4) return false;
+              if(Number(xhr.status)===200){
                 let content=xhr[method];
                 //注意某些服务器不会返回etag或者last-modified
                 Object.assign(value,{
@@ -417,14 +423,20 @@ const headLoaderSource=function(){
                 await that.db.setItem(value);
               }
               else if(Number(xhr.status)===404){
-                value.value=value.key;//404错误将皱键值赋予数值以方便判断
-                if(that.showLog) mediaLength++;//增加一次资源加载次数
+                value.value=404;//404错误将被键值赋予数值以方便判断
                 that.db.temp[cacheKey]=value;
-                _r(`${value.key} 404 error!`);
-                //await that.db.setItem(value);//数据未成功获取时不写入缓存数据库，以免影响下次读取
+                reError(xhr,`${value.key} 404 error!`);
+              }
+              else if(xhr.status===0){
+                value.value="";//网络错误
+                that.db.temp[cacheKey]=value;
+                reError(xhr,`${value.key} 未成功加载!`);
               }
             };
-            xhr.onerror=_e=>_ri(_e);
+            xhr.onerror=_e=>{
+              xhr.abort();
+              _ri(_e);
+            }
           }
         };
         that.db.getItem(cacheKey).then((_value)=>{
