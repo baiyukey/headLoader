@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.4
+ * @version : 2.4.5
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -27,6 +27,12 @@ const headLoaderSource=function(){
   if(!_global.Promise) return _global.onload=error;//所有IE均不支持
   const XHR=_global.XMLHttpRequest;
   const min=/^(((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)|(127.0.0.1))$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
+  const errors={
+    0:"网络连接失败。",
+    404:"该资源找不到了。",
+    500:"无权访问。",
+    503:"该请求已被阻止。"
+  };
   const getVersion=function(_hours,_delayHours){
     //开发模式直接返回
     if(min==="") return (new Date().getTime()+(_delayHours || 0)*1000*60*60);
@@ -183,9 +189,9 @@ const headLoaderSource=function(){
       else{
         //简写时只有两个参数，_key,_value
         //例如：setItem("/a/color.css",'a{color:red}')
-        defaultArgument.key=arguments.length>0 ? arguments[0] : defaultArgument.key;
-        defaultArgument.value=arguments.length>1 ? (arguments[1]) : defaultArgument.value;
-        defaultArgument.tableName=arguments.length>2 ? arguments[2] : defaultArgument.tableName;
+        defaultArgument.key=arguments[0] || defaultArgument.key;
+        defaultArgument.value=arguments[1] || defaultArgument.value;
+        defaultArgument.tableName=arguments[2] || defaultArgument.tableName;
       }
       return new Promise(async(_resolve,_reject)=>{
         await openDB();
@@ -295,15 +301,15 @@ const headLoaderSource=function(){
     }
   };
   let headLoader=function(_val){
-    let val=typeof(_val)!=="undefined" ? _val : {};
+    let val=typeof (_val)!=="undefined" ? _val : {};
     this.dataMin=min;
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
     this.dataFont=val.dataFont || [];
     this.dataFile=val.dataFile || [];
-    this.lifeCycle=typeof(val.lifeCycle)==="object" ? val.lifeCycle[0] :  (val.lifeCycle || 24);
-    this.cycleDelay=typeof(val.lifeCycle)==="object" ? val.lifeCycle[1] : (val.cycleDelay || 0);
+    this.lifeCycle=typeof (val.lifeCycle)==="object" ? val.lifeCycle[0] : (val.lifeCycle || 24);
+    this.cycleDelay=typeof (val.lifeCycle)==="object" ? val.lifeCycle[1] : (val.cycleDelay || 0);
     this.dataActive=val.dataActive || dataActive; //Boolean | 是否自动切换线上与线下代码路径，默认false | 可选项
     this.callback=val.callback || null;//Function | 加载完成后的回调函数 | 可选项
     this.multiLoad=val.multiLoad || (min===".min");//默认线上并行加载
@@ -345,18 +351,18 @@ const headLoaderSource=function(){
       });
     };
     //获取文件缓存状态值，判断是否已经过期
-    let getStatus=function(_value,_url){
+    let getStatus=function(_data,_url){
       return new Promise((_r,_rj)=>{
         //0：缓存未到期
         //1：缓存已到期，但服务器文件未变化，继续使用缓存
         //2：缓存已到期，服务器文件已修改，需要从服务器获取
-        if(!_value) return _r(2);
-        if(Number(_value.version)<Number(that.requestVersion)){//缓存过期
+        if(!_data) return _r(2);
+        if(Number(_data.version)<Number(that.requestVersion)){//缓存过期
           //先读取文件头的etag判断文件是否已修改
-          if(_value.etag==="") _r(2);
+          if(_data.etag==="") _r(2);
           else{
             getEtag(_url).then(_v=>{
-              if(_value.etag===_v) _r(1);
+              if(_data.etag===_v) _r(1);
               else _r(2);
             }).catch(_v=>_rj(_v));
           }
@@ -366,7 +372,7 @@ const headLoaderSource=function(){
         }
       });
     };
-    let loadXHR=function(_module,_fileType){
+    let loadMod=async function(_module,_fileType){
       return new Promise((_r,_ri)=>{
         if(isHttp(_module)){
           if(_fileType==="js") linkJs(_module);
@@ -375,72 +381,88 @@ const headLoaderSource=function(){
         }
         let url=getUrl(_module,_fileType)+(_module.indexOf("?")>=0 ? "&v=" : "?v=")+that.requestVersion;//扩展名不一定是最后的字符
         let cacheKey=getCacheKey(_module,_fileType);
-        let getXHR=async function(_io,_value){
-          let value={};
-          Object.assign(value,{
+        let getMod=async function(_io,_data){
+          let data={};
+          Object.assign(data,{
             "key":cacheKey,
-            "value":_value ? _value.value : "",
-            "etag":_value ? _value.etag : "",
-            "version":_value ? _value.version : that.requestVersion
+            "value":_data ? _data.value : "",
+            "etag":_data ? _data.etag : "",
+            "version":_data ? _data.version : that.requestVersion
           });
-          let reError=function(_xhr,_info){
-            _xhr.abort();
-            if(that.showLog) mediaLength++;//增加一次资源加载次数
-            _r(_info);
-          };
           if(_io===0){//0：缓存未到期
-            that.db.temp[cacheKey]=value;
+            that.db.temp[cacheKey]=data;
             _r("success");
           }
           else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
-            //setCache(cacheKey,value);
-            that.db.temp[cacheKey]=value;
+            //setCache(cacheKey,data);
+            that.db.temp[cacheKey]=data;
             _r("success");
-            value.version=that.requestVersion;
-            await that.db.setItem(value);
+            data.version=that.requestVersion;
+            await that.db.setItem(data);
           }
           else if(_io===2){//2：缓存已到期或已更新，需要从服务器获取
-            let xhr=new XHR(),fileType=getType(value.key),method="responseText";
-            xhr.open("GET",url);
-            if(!["js","ts","css","svg","text","xml","json","html","htm"].includes(fileType)){
-              xhr.responseType="arraybuffer";
-              method="response";
-            } //把异步获取类型改为arraybuffer二进制类型
-            xhr.send();
-            xhr.onreadystatechange=async function(){
-              if (Number(xhr.readyState)!==4) return false;
-              if(Number(xhr.status)===200){
-                let content=xhr[method];
-                //注意某些服务器不会返回etag或者last-modified
-                Object.assign(value,{
+            let fileType=getType(data.key);
+            let responseType=["js","ts","css","svg","text","xml","json","html","htm"].includes(fileType) ? "text" : "arraybuffer"; //获取的数据是否是二进制编码条件,例如jpeg类型
+            let hasError=function(_status){
+              data.version=0;
+              data.value={
+                code:_status,
+                detail:`Error-${_status} ! ${errors[_status] || ""}`
+              };
+              that.db.temp[cacheKey]=data;
+              _r(`${data.key} 返回 ${data.value.detail}`);
+            };
+            if(!window.fetch){
+              let response=await fetch(url).catch(_=>hasError(_.name==="TypeError" ? 0 : _.name));
+              if(response.ok){
+                let content=responseType==="arraybuffer" ? await response.arrayBuffer() : await response.text();
+                Object.assign(data,{
                   "value":content,
-                  "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "",
+                  "etag":response.headers.get('etag') || response.headers.get('last-modified') || "",//注意某些服务器不会返回etag或者last-modified
                   "version":that.requestVersion
                 });
-                if(that.showLog) mediaLength++;//增加一次资源加载次数
-                that.db.temp[cacheKey]=value;
+                that.db.temp[cacheKey]=data;
                 _r("success");
-                await that.db.setItem(value);
+                await that.db.setItem(data);
               }
-              else if(Number(xhr.status)===404){
-                value.value=404;//404错误将被键值赋予数值以方便判断
-                that.db.temp[cacheKey]=value;
-                reError(xhr,`${value.key} 404 error!`);
+              else{
+                hasError(response.status);
               }
-              else if(xhr.status===0){
-                value.value="";//网络错误
-                that.db.temp[cacheKey]=value;
-                reError(xhr,`${value.key} 未成功加载!`);
-              }
-            };
-            xhr.onerror=_e=>{
-              xhr.abort();
-              _ri(_e);
+            }
+            else{
+              let xhr=new XHR();
+              xhr.open("GET",url);
+              xhr.responseType=responseType;
+              xhr.send();
+              xhr.onreadystatechange=async function(){
+                if(Number(xhr.readyState)!==4) return false;
+                if(that.showLog) mediaLength++;//增加一次资源加载次数
+                if(Number(xhr.status)===200){
+                  let content=xhr[responseType==="arraybuffer" ? "response" : "responseText"];
+                  //注意某些服务器不会返回etag或者last-modified
+                  Object.assign(data,{
+                    "value":content,
+                    "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "",
+                    "version":that.requestVersion
+                  });
+                  that.db.temp[cacheKey]=data;
+                  _r("success");
+                  await that.db.setItem(data);
+                }
+                else{
+                  hasError(xhr.status);
+                  xhr.abort();
+                }
+              };
+              xhr.onerror=_e=>{
+                xhr.abort();
+                _ri(_e);
+              };
             }
           }
         };
-        that.db.getItem(cacheKey).then((_value)=>{
-          getStatus(_value,url).then(_status=>getXHR(_status,_value)).catch(_err=>console.error(_err));
+        that.db.getItem(cacheKey).then((_data)=>{
+          getStatus(_data,url).then(_status=>getMod(_status,_data)).catch(_err=>console.error(_err));
         });
       });
     };
@@ -512,10 +534,13 @@ const headLoaderSource=function(){
           codes[_k]='';
           let runThis=function(_resolve,_reject){
             cacheKey=getCacheKey(_k,_fileType);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
-            codes[_k]=that.db.temp[cacheKey] ? that.db.temp[cacheKey].value : "";
+            let thisData=that.db.temp[cacheKey] ? that.db.temp[cacheKey] : "";
+            codes[_k]=thisData.value;
             that.returnData.push({
               key:_k,
-              value:codes[_k]
+              value:thisData.value || '',
+              version:thisData.version,
+              etag:thisData.etag
             });
             _resolve("success");
           };
@@ -555,7 +580,7 @@ const headLoaderSource=function(){
             return true;
           }
           else{
-            await loadXHR(_modules[i],_fileType);
+            await loadMod(_modules[i],_fileType);
             await writeThese([_modules[i]],_fileType);
             await runThis(i++);
           }
@@ -568,7 +593,7 @@ const headLoaderSource=function(){
     let multiLoad=function(_modules,_fileType){
       return async(_resolve)=>{
         let promises=new Array(_modules.length).fill(0).map((v,i)=>new Promise(async function(_resolve){
-          await loadXHR(_modules[i],_fileType);
+          await loadMod(_modules[i],_fileType);
           _resolve("success");
         }));
         Promise.all(promises).then(async _=>{
@@ -589,9 +614,9 @@ const headLoaderSource=function(){
     this.db.getUrl=getUrl;
     this.returnData={};//用于run返回的数据
     this.run=async function(){
-      if(typeof(this.lifeCycle)==="object"){
+      if(typeof (this.lifeCycle)==="object"){
         that.lifeCycle=this.lifeCycle[0];
-        that.cycleDelay=this.lifeCycle[1]
+        that.cycleDelay=this.lifeCycle[1];
       }
       that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
       that.db=new localDB({version:that.requestVersion});
