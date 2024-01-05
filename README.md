@@ -123,7 +123,7 @@ let loadImg=async function(_e){
  await imgLoader.loadFile(_e.getAttribute("data-file"));
  _e.src= await imgLoader.db.getBase64(thisSrc);
 };
-document.querySelectorAll("img[data-file]").forEach(_e=>loadImg(_e));
+document.querySelectorAll("img[data-file]").forEach(_=>loadImg(_));
 ```
 #### 如何实现跨页缓存管理
 ```javascript
