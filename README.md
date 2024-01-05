@@ -113,15 +113,14 @@
 ```
 #### 一个加载图片实例
 ```html
- <img data-file="/images/1.png" title="图1" class="middle" style="width:90%;max-width:751px;">
- <img data-file="/images/2.png" title="图2" class="middle" style="width:500px;">
+ <img data-file="/images/1.png">
+ <img data-file="/images/2.png">
 ```
 ```javascript
 let loadFiles=async function(_e){
  let thisLoader=new headLoader();
  thisLoader.lifeCycle=7*24;
  await thisLoader.loadFile(_e.getAttribute("data-file"));
- //thisLoader.db.getBase64(_src)方法可返回图片的base64编码
  _e.src= await thisLoader.db.getBase64(thisSrc);
 };
 document.querySelectorAll("img[data-file]").forEach(_e=>loadFiles(_e));
