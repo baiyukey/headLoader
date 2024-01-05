@@ -117,13 +117,13 @@
  <img data-file="/images/2.png">
 ```
 ```javascript
-let loadFiles=async function(_e){
- let thisLoader=new headLoader();
- thisLoader.lifeCycle=7*24;
- await thisLoader.loadFile(_e.getAttribute("data-file"));
- _e.src= await thisLoader.db.getBase64(thisSrc);
+let loadImg=async function(_e){
+ let imgLoader=new headLoader();
+ imgLoader.lifeCycle=7*24;
+ await imgLoader.loadFile(_e.getAttribute("data-file"));
+ _e.src= await imgLoader.db.getBase64(thisSrc);
 };
-document.querySelectorAll("img[data-file]").forEach(_e=>loadFiles(_e));
+document.querySelectorAll("img[data-file]").forEach(_e=>loadImg(_e));
 ```
 #### 如何实现跨页缓存管理
 ```javascript
