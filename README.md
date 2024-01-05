@@ -43,7 +43,8 @@
 ### 2.命令行语句法
 ```html
 <script type="text/javascript" src="/media/user/js/libs/headLoader.js"></script>
-<script type="text/javascript">
+```
+```javascript
    let loader=new hLoader();
    // String | js、css资源路径，默认"./" | 可选项
    loader.dataDir="/media/";
@@ -71,11 +72,9 @@
    // run()结果只有一个值时返回：{"/media/css/public/css.css":value, ...}
    // run()结果有多个值时返回：[{"/media/css/public/css.css":value, ...},...]
    // run()结果没有值时返回：false
-</script>
 ```
 #### 当然,您也可以写成这样
-```html
-<script type="text/javascript">
+```javascript
    let loader=new hLoader({
       dataDir:"/media/",
       dataCss:['public/css1','public/css2','_css'],
@@ -89,7 +88,6 @@
       callback:function(_data){console.log(_data)}
    });
    await loader.run()
-</script>
 ```
 #### 更多类型加载
 ```javascript
@@ -112,6 +110,21 @@
    console.log(thisLoader.db.getValue("/button.svg"));
    //thisLoader.db.getBase64(_src)方法可返回图片的base64编码
    console.log(thisLoader.db.getBase64("/a.jpg"));
+```
+#### 一个加载图片实例
+```html
+ <img data-file="/images/1.png" title="图1" class="middle" style="width:90%;max-width:751px;">
+ <img data-file="/images/2.png" title="图2" class="middle" style="width:500px;">
+```
+```javascript
+let loadFiles=async function(_e){
+ let thisLoader=new headLoader();
+ thisLoader.lifeCycle=7*24;
+ await thisLoader.loadFile(_e.getAttribute("data-file"));
+ //thisLoader.db.getBase64(_src)方法可返回图片的base64编码
+ _e.src= await thisLoader.db.getBase64(thisSrc);
+};
+document.querySelectorAll("img[data-file]").forEach(_e=>loadFiles(_e));
 ```
 #### 如何实现跨页缓存管理
 ```javascript
