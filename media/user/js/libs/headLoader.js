@@ -412,7 +412,7 @@ const headLoaderSource=function(){
               that.db.temp[cacheKey]=data;
               _r(`${data.key} 返回 ${data.value.detail}`);
             };
-            if(!window.fetch){
+            if(window.fetch){
               let response=await fetch(url).catch(_=>hasError(_.name==="TypeError" ? 0 : _.name));
               if(response.ok){
                 let content=responseType==="arraybuffer" ? await response.arrayBuffer() : await response.text();
