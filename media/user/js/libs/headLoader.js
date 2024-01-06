@@ -1,7 +1,7 @@
 ﻿/**
  * headLoader用于加载、预加载及缓存网站资源，实现网站快速响应，优化服务器请求的目的。使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速效果。
  * localDB用于对indexDB增删改查的操作，主要配合headLoader缓存资源，当然也可以单独使用
- * @global : headLoader,localDB
+ * @global : headLoader,hLoader,localDB
  * @author: 宇哥 baiyukey@qq.com
  * @param {String} [this.dataDir] -资源路径
  * @param {Array} [this.dataCss] -CSS模块列表
@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.5
+ * @version : 2.4.6
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -35,9 +35,9 @@ const headLoaderSource=function(){
   };
   const getVersion=function(_hours,_delayHours){
     //开发模式直接返回
-    if(min==="") return (new Date().getTime()+(_delayHours || 0)*1000*60*60);
+    if(min==="") return (new Date().getTime());
     let start=new Date("2000/1/1").getTime();
-    let plus=Math.ceil((new Date().getTime()-start)/(1000*60*60*_hours));
+    let plus=Math.ceil((new Date().getTime()-((_delayHours || 0)*1000*60*60)-start)/(1000*60*60*_hours));
     return start+plus*1000*60*60*_hours+(_delayHours || 0)*1000*60*60;
   };
   const getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
