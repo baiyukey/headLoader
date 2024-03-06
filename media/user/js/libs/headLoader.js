@@ -763,7 +763,7 @@ const headLoaderSource=function(){
     srcSearch=new Date(srcSearch).getTime();
     if(srcSearch){
       let srcSearchBackup=await initLoader.db.getValue("srcSearch");
-      if((!srcSearchBackup) || (srcSearchBackup && srcSearchBackup<srcSearch)){
+      if((!srcSearchBackup) || typeof (srcSearchBackup)==="string" || (srcSearchBackup && srcSearchBackup<srcSearch)){
         await initLoader.db.delete();
         await initLoader.db.setValue("srcSearch",srcSearch);
         localStorage.clear();
