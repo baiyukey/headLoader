@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.6
+ * @version : 2.4.7
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -759,10 +759,11 @@ const headLoaderSource=function(){
     if(dataFont.length>0) initLoader.dataFont=dataFont;
     if(dataFile.length>0) initLoader.dataFile=dataFile;
     initLoader.showLog=showLog;//是否显示统计
-    let srcSearch=thisScript.src.replace(/.+\.js(.*)/,"$1");
-    if(srcSearch!==thisScript.src && srcSearch!==""){
+    let srcSearch=thisScript.src.replace(/.+\.js\?v=(.*)/,"$1");
+    srcSearch=new Date(srcSearch).getTime();
+    if(srcSearch){
       let srcSearchBackup=await initLoader.db.getValue("srcSearch");
-      if((!srcSearchBackup) || (srcSearchBackup && srcSearchBackup!==srcSearch)){
+      if((!srcSearchBackup) || (srcSearchBackup && srcSearchBackup<srcSearch)){
         await initLoader.db.delete();
         await initLoader.db.setValue("srcSearch",srcSearch);
         localStorage.clear();
