@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.7
+ * @version : 2.4.8
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -387,7 +387,8 @@ const headLoaderSource=function(){
             "key":cacheKey,
             "value":_data ? _data.value : "",
             "etag":_data ? _data.etag : "",
-            "version":_data ? _data.version : that.requestVersion
+            "version":_data ? _data.version : that.requestVersion,
+            "exception":_data ? _data.exception : false
           });
           if(_io===0){//0：缓存未到期
             that.db.temp[cacheKey]=data;
@@ -405,12 +406,13 @@ const headLoaderSource=function(){
             let responseType=["js","ts","css","svg","text","xml","json","html","htm"].includes(fileType) ? "text" : "arraybuffer"; //获取的数据是否是二进制编码条件,例如jpeg类型
             let hasError=function(_status){
               data.version=0;
-              data.value={
+              data.value="";
+              data.exception={
                 code:_status,
                 detail:`Error-${_status} ! ${errors[_status] || ""}`
               };
               that.db.temp[cacheKey]=data;
-              _r(`${data.key} 返回 ${data.value.detail}`);
+              _r(`${data.key} 返回 ${data.exception.detail}`);
             };
             if(window.fetch){
               let response=await fetch(url).catch(_=>hasError(_.name==="TypeError" ? 0 : _.name));
@@ -419,7 +421,8 @@ const headLoaderSource=function(){
                 Object.assign(data,{
                   "value":content,
                   "etag":response.headers.get('etag') || response.headers.get('last-modified') || "",//注意某些服务器不会返回etag或者last-modified
-                  "version":that.requestVersion
+                  "version":that.requestVersion,
+                  "exception":false
                 });
                 that.db.temp[cacheKey]=data;
                 _r("success");
@@ -443,7 +446,8 @@ const headLoaderSource=function(){
                   Object.assign(data,{
                     "value":content,
                     "etag":xhr.getResponseHeader("etag") || xhr.getResponseHeader("last-modified") || "",
-                    "version":that.requestVersion
+                    "version":that.requestVersion,
+                    "exception":false
                   });
                   that.db.temp[cacheKey]=data;
                   _r("success");
@@ -540,7 +544,8 @@ const headLoaderSource=function(){
               key:_k,
               value:thisData.value || '',
               version:thisData.version,
-              etag:thisData.etag
+              etag:thisData.etag,
+              exception:thisData.exception || false
             });
             _resolve("success");
           };
