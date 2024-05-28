@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.8
+ * @version : 2.4.9
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -110,6 +110,12 @@ const headLoaderSource=function(){
     };
     const openDB=function(){
       if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
+      if(typeof (_option.lifeCycle)==="object"){
+        option.version=getVersion(..._option.lifeCycle);
+      }
+      else{
+        option.version=getVersion(_option.lifeCycle,_option.cycleDelay);
+      }
       return new Promise((_resolve,_reject)=>{
         if(_global.localDBResult!==null && _global.localDBStatus===1){
           //if(reLog) console.log(`${option.database}不必重复打开`);
@@ -614,7 +620,10 @@ const headLoaderSource=function(){
       return new Promise(that.multiLoad ? multiLoad(_modules,_fileType) : serialLoad(_modules,_fileType));//线上并行，线下串行（可调试）
     };//加载
     //indexDB实例
-    this.db=new localDB({version:this.requestVersion});
+    this.db=new localDB({
+      lifeCycle:this.lifeCycle,
+      cycleDelay:this.cycleDelay
+    });
     this.db.temp={};//页内缓存数据
     this.db.getUrl=getUrl;
     this.returnData={};//用于run返回的数据
@@ -624,7 +633,10 @@ const headLoaderSource=function(){
         that.cycleDelay=this.lifeCycle[1];
       }
       that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
-      that.db=new localDB({version:that.requestVersion});
+      that.db=new localDB({
+        lifeCycle:that.lifeCycle,
+        cycleDelay:that.cycleDelay
+      });
       this.db.temp={};//页内缓存数据
       this.db.getUrl=getUrl;
       this.returnData={};//用于run返回的数据
@@ -764,7 +776,7 @@ const headLoaderSource=function(){
     if(dataFont.length>0) initLoader.dataFont=dataFont;
     if(dataFile.length>0) initLoader.dataFile=dataFile;
     initLoader.showLog=showLog;//是否显示统计
-    let srcSearch=thisScript.src.replace(/.+\.js\?v=(.*)/,"$1");
+    let srcSearch=thisScript.src.replace(/.+\.js\?v=(.*)/,"$1");//取URL的search值,用来判断是否需要强制清除数据库
     srcSearch=new Date(srcSearch).getTime();
     if(srcSearch){
       let srcSearchBackup=await initLoader.db.getValue("srcSearch");
