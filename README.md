@@ -94,6 +94,8 @@
    //支持的文本文件类型有："js","css","svg","text","xml","json","html","htm"等
    //支持二进制文件类型但不限于这些类型："jpg","png","woff"等
    let thisLoader=new hLoader();
+   thisLoader.lifeCycle=[168,48];//从2000年1月1日0:00:00开始，每168小时检查一次更新，延迟48小时，具体使用方法请前往uielf.com
+   await thisLoader.run();
    let files;
    //读取一个文件，第一次从网络地址读取，第二次从indexedDB中读取，如果数据过期，会自动更新。
    files=await thisLoader.loadFile("/button.svg");
@@ -120,6 +122,7 @@
 let loadImg=async function(_e){
  let imgLoader=new headLoader();
  imgLoader.lifeCycle=7*24;
+ await imgLoader.run();
  await imgLoader.loadFile(_e.getAttribute("data-file"));
  _e.src= await imgLoader.db.getBase64(thisSrc);
 };
@@ -130,7 +133,7 @@ document.querySelectorAll("img[data-file]").forEach(_=>loadImg(_));
    //a.html和b.html的JS程序需要先各自实例化一个headLoader
    let loader=new hLoader();
    //仅在报错信息为数据库未打开时使用，整个网站只调用一次即可
-   await loader.db.open();
+   await loader.run();
    //在任意一个页面缓存写入使用命令：loader.db.setValue(key,value)
    await loader.db.setValue("names",["张三","李四","王五"]);
    //在任意任一个页面缓存读取：loader.db.getValue(key)
