@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.5.1
+ * @version : 2.5.3
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -86,9 +86,16 @@ const headLoaderSource=function(){
         //        video:["key","value","version"],
         data:["key","value","version"]
       },
-      version:getVersion(min===".min" ? 24 : 0)
+      version:0,
+      lifeCycle:0,
+      cycleDelay:0
     };
     Object.assign(option,_option);
+    if(getDataType(_option.lifeCycle)==="Array"){
+      option.lifeCycle=_option.lifeCycle[0];
+      option.cycleDelay=_option.lifeCycle[1];
+    }
+    option.version=getVersion(option.lifeCycle,option.cycleDelay);
     const arrayBufferToBase64=(_buffer,_ext)=>{
       let binary=[];
       let bytes=new Uint8Array(_buffer);
@@ -109,14 +116,8 @@ const headLoaderSource=function(){
       console && console.log("您的浏览器不支持indexedDB，请使用现代浏览器，例如chrome,firefox等.");
       return false;
     };
-    const openDB=function(){
+    const openDB=function(_){
       if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
-      if(typeof (_option.lifeCycle)==="object"){
-        option.version=getVersion(..._option.lifeCycle);
-      }
-      else{
-        option.version=getVersion(_option.lifeCycle,_option.cycleDelay);
-      }
       return new Promise((_resolve,_reject)=>{
         if(_global.localDBResult!==null && _global.localDBStatus===1){
           //if(reLog) console.log(`${option.database}不必重复打开`);
@@ -261,7 +262,15 @@ const headLoaderSource=function(){
     };
     const getValue=async function(_key){
       let thisResult=await getItem(_key);
-      return thisResult ? thisResult.value : false;
+      if(!thisResult) return false;
+      if(!thisResult.version) return false;
+      if(new Date().getTime()>thisResult.version) return false;
+      return thisResult.value;
+    };
+    const getEndTime=async function(_key){
+      let thisResult=await getItem(_key);
+      if(!thisResult) return 0;
+      return thisResult.version;
     };
     const getItemCss=async function(_module,_tableName){
       let module=standardized(_module,"css");
@@ -288,6 +297,7 @@ const headLoaderSource=function(){
       this.getItem=getItem;
       this.setValue=setItem;
       this.getValue=getValue;
+      this.getEndTime=getEndTime;
       this.getCss=getItemCss;
       this.getHtml=getItemHtml;
       this.getJs=getItemJs;
@@ -621,17 +631,11 @@ const headLoaderSource=function(){
       return new Promise(that.multiLoad ? multiLoad(_modules,_fileType) : serialLoad(_modules,_fileType));//线上并行，线下串行（可调试）
     };//加载
     //indexDB实例
-    this.db=new localDB({
-      lifeCycle:this.lifeCycle,
-      cycleDelay:this.cycleDelay
-    });
-    this.db.temp={};//页内缓存数据
-    this.db.getUrl=getUrl;
     this.returnData={};//用于run返回的数据
     this.run=async function(){
-      if(typeof (this.lifeCycle)==="object"){
-        that.lifeCycle=this.lifeCycle[0];
+      if(getDataType(this.lifeCycle)==="Array"){
         that.cycleDelay=this.lifeCycle[1];
+        that.lifeCycle=this.lifeCycle[0];
       }
       that.requestVersion=getVersion(that.lifeCycle,that.cycleDelay);
       that.db=new localDB({
@@ -785,12 +789,14 @@ const headLoaderSource=function(){
     if(dataFile.length>0) initLoader.dataFile=dataFile;
     initLoader.showLog=showLog;//是否显示统计
     let srcSearch=thisScript.src.replace(/.+\.js\?v=(.*)/,"$1");//取URL的search值,用来判断是否需要强制清除数据库
-    srcSearch=new Date(srcSearch).getTime();
-    if(srcSearch){
-      let srcSearchBackup=await initLoader.db.getValue("srcSearch");
-      if((!srcSearchBackup) || typeof (srcSearchBackup)!=="number" || (srcSearchBackup && srcSearchBackup<srcSearch)){
-        await initLoader.db.delete();
-        await initLoader.db.setValue("srcSearch",srcSearch);
+    if(srcSearch&&min===".min"){//强制清除缓存机制，在本地开发环境不需要
+      let searchLoader=new headLoader();
+      searchLoader.lifeCycle=24*36500;
+      await searchLoader.run();
+      let srcSearchCache=await searchLoader.db.getValue("srcSearch");
+      if((!srcSearchCache) || (srcSearchCache && srcSearchCache!==srcSearch)){
+        await searchLoader.db.delete();
+        await searchLoader.db.setValue("srcSearch",srcSearch);
         localStorage.clear();
       }
     }
