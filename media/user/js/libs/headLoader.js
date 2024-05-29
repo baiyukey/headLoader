@@ -15,7 +15,7 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.4.9
+ * @version : 2.5.1
  * @copyright : http://www.uielf.com
  */
 const headLoaderSource=function(){
@@ -24,6 +24,7 @@ const headLoaderSource=function(){
   const error=function(){
     document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
   };
+  const getDataType=(_arr)=>Object.prototype.toString.call(_arr).slice(8,-1);//准确的获取数据类型是数组还是字典对象
   if(!_global.Promise) return _global.onload=error;//所有IE均不支持
   const XHR=_global.XMLHttpRequest;
   const min=/^(((192\.168|172\.([1][6-9]|[2]\d|3[01]))(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){2}|10(\.([2][0-4]\d|[2][5][0-5]|[01]?\d?\d)){3})|(localhost)|(127.0.0.1))$/.test(_global.location.hostname) ? "" : ".min";//直接返回"min"时将无缓存机制
@@ -694,8 +695,15 @@ const headLoaderSource=function(){
       return await that.run();
     };
     this.nextLife=function(_hours,_delayHours){
-      let hours=_hours || that.lifeCycle;
-      let delayHours=_delayHours || that.cycleDelay;
+      let hours,delayHours;
+      if(getDataType(that.lifeCycle)==="Array"){
+        hours=that.lifeCycle[0];
+        delayHours=that.lifeCycle[1];
+      }
+      else if(getDataType(that.lifeCycle)==="Number"){
+        hours=_hours || that.lifeCycle;
+        delayHours=_delayHours || that.cycleDelay;
+      }
       return new Date(getVersion(hours,delayHours)).toLocaleString();
     };
     let that=this;//关键字避嫌
