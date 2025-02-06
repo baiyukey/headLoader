@@ -162,6 +162,6 @@ document.querySelectorAll("img[data-file]").forEach(_=>loadImg(_));
     8.命令行语句法可以定义回调函数callback,标签属性定义法不支持定义回调函数
 具体说明
 --
-   欢迎访问我的个人网站解锁更多玩法 [UI精灵 uiElf.com](http://www.uielf.com/headLoader/) 
+   欢迎访问我的个人网站解锁更多玩法 [UI精灵 uiElf.cn](http://www.uielf.cn/headLoader/) 
    作者:宇哥
    联系方式:baiyukey@qq.com
