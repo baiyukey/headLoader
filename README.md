@@ -5,7 +5,7 @@
 ### headLoader的主要功能有：`资源加载`、`预加载`、`热加载`、`多页面缓存共享`、`代码隐藏`等。
 ### 主要作用是使网站快速响应及反编译。
 ### 由于使用纯前端技术，基本上用"0成本"就能使普通的网站得到明显的加速及优化。
-### 当前版本为v2.5.3,他有如下特点：
+### 当前版本为v2.5.6,他有如下特点：
     1.可实现一个script标签加载页面所需的全部css及js文档；
     2.支持"js","css","svg","text","xml","json","html","htm"等文本文件的读取；
     3.支持图片、视频、字体、图标库等二进制文件类型的读取；
@@ -139,6 +139,8 @@ document.querySelectorAll("img[data-file]").forEach(_=>loadImg(_));
    //在任意任一个页面缓存读取：loader.db.getValue(key)
    let names=await loader.db.getValue("names");
    console.log(names);//["张三","李四","王五"] 或 false
+   //删库
+   loader.db.delete();
 ```
 使用说明
 --
