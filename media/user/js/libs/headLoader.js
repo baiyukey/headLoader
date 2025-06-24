@@ -15,8 +15,8 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.5.3
- * @copyright : http://www.uielf.com
+ * @version : 2.5.6
+ * @copyright : http://www.uielf.cn
  */
 const headLoaderSource=function(){
   const _global=(window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window;
@@ -36,9 +36,9 @@ const headLoaderSource=function(){
   };
   const getVersion=function(_hours,_delayHours){
     //开发模式直接返回
-    if(min==="") return (new Date().getTime());
+    if(min==="") return (Date.now());
     let start=new Date("2000/1/1").getTime();
-    let plus=Math.ceil((new Date().getTime()-((_delayHours || 0)*1000*60*60)-start)/(1000*60*60*_hours));
+    let plus=Math.ceil((Date.now()-((_delayHours || 0)*1000*60*60)-start)/(1000*60*60*_hours));
     return start+plus*1000*60*60*_hours+(_delayHours || 0)*1000*60*60;
   };
   const getType=_=>_.replace(/^.*\.(\w*)[?#]*.*$/,"$1");//url.parse(req.url).ext无法获取错误路径的扩展名
@@ -153,23 +153,84 @@ const headLoaderSource=function(){
         };
       });
     };
-    const closeDB=function(_waitTime){
-      if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
+    const closeDB=function(_waitTime=300){
       return new Promise((_resolve,_reject)=>{
-        let runThis=function(){
-          _global.localDBResult && _global.localDBResult.close();
-          _global.localDBStatus=0;
-          //if(reLog) console.log(`${option.database}已关闭`);
-          _resolve("success");
+        // 清除可能存在的旧定时器
+        if(typeof _global.waitCloseLocalDB!=="undefined"){
+          clearTimeout(_global.waitCloseLocalDB);
+        }
+        // 立即关闭逻辑
+        const immediateClose=()=>{
+          if(_global.localDBResult && _global.localDBStatus===1){
+            try{
+              _global.localDBResult.close();
+              _global.localDBStatus=0;
+              _global.localDBResult=null;
+              //console.log(`${option.database} 已强制关闭`);
+              _resolve(true);
+            }
+            catch(e){
+              console.error('强制关闭数据库失败:',e);
+              _reject(e);
+            }
+          }
+          else{
+            _resolve(false); // 数据库已经是关闭状态
+          }
         };
-        _global.waitCloseLocalDB=setTimeout(runThis,_waitTime || 3000);
+        // 如果有等待时间，使用延迟关闭
+        if(_waitTime>0){
+          _global.waitCloseLocalDB=setTimeout(()=>{
+            immediateClose();
+          },_waitTime);
+        }
+        else{
+          // 无等待时间，立即关闭
+          immediateClose();
+        }
       });
     };
-    const deleteDB=async function(){
-      if(!_global.localDBResult) return console.warn(`目前还没有库${option.database}`);
-      await closeDB(0);
-      _global.indexedDB.deleteDatabase(option.database);
-      if(reLog) console.log(`${option.database}已删除`);
+    const deleteDB=function(){
+      return new Promise(async(_resolve,_reject)=>{
+        // 第一步：确保关闭所有连接
+        try{
+          // 强制立即关闭，不等待
+          await closeDB(0);
+          // 第二步：检查是否还有活跃连接
+          let retryCount=0;
+          const maxRetries=10;
+          const retryInterval=300; // 300ms
+          const tryDelete=async()=>{
+            const deleteRequest=indexedDB.deleteDatabase(option.database);
+            deleteRequest.onsuccess=()=>{
+              console.log('数据库删除成功');
+              _resolve(true);
+            };
+            deleteRequest.onerror=(event)=>{
+              console.error('删除数据库出错:',event.target.error);
+              _reject(event.target.error);
+            };
+            deleteRequest.onblocked=()=>{
+              retryCount++;
+              if(retryCount>=maxRetries){
+                _reject(new Error(`删除被阻塞，已达到最大重试次数 ${maxRetries}`));
+                return;
+              }
+              console.log(`删除被阻塞，等待其他连接关闭... (重试 ${retryCount}/${maxRetries})`);
+              // 再次尝试关闭可能漏掉的连接
+              closeDB(0).then(()=>{
+                // 使用递增的延迟时间
+                setTimeout(tryDelete,retryInterval*retryCount);
+              });
+            };
+          };
+          // 开始尝试删除
+          await tryDelete();
+        }
+        catch(e){
+          _reject(new Error(`关闭数据库连接失败: ${e.message}`));
+        }
+      });
     };
     /**
      * 定义某条数据
@@ -215,14 +276,20 @@ const headLoaderSource=function(){
         }).catch(_v=>{
           method="add";
         });
+        if(!_global.localDBResult){
+          _resolve(false);
+          return;
+        }
         let thisTable=_global.localDBResult.transaction(defaultArgument.tableName,"readwrite").objectStore(defaultArgument.tableName);
         let setData=thisTable[method](thisData);
-        setData.onsuccess=function(){
+        setData.onsuccess=async function(){
           //console.log(`${thisData.key}数据(${method})${method==="add" ? "写入" : "更新"}成功`);
           _resolve(thisData);
+          await closeDB();
         };
-        setData.onerror=_e=>{
+        setData.onerror=async _e=>{
           _reject(_e.target.error);
+          await closeDB();
         };
       });
     };
@@ -264,7 +331,7 @@ const headLoaderSource=function(){
       let thisResult=await getItem(_key);
       if(!thisResult) return false;
       if(!thisResult.version) return false;
-      if(new Date().getTime()>thisResult.version) return false;
+      if(Date.now()>thisResult.version) return false;
       return thisResult.value;
     };
     const getEndTime=async function(_key){
@@ -314,7 +381,8 @@ const headLoaderSource=function(){
       return _url.replace(/^(\s*)|(\s*)$/g,"").replace(`(.${getType(_url)}`,``);
     }
     else{
-      return console.error("模块格式错误");
+      //console.error("模块格式错误");
+      return _url;
     }
   };
   let headLoader=function(_val){
@@ -580,7 +648,7 @@ const headLoaderSource=function(){
       });
     };
     let logData=function(){
-      let thisDuration=new Date().getTime()-startTime;
+      let thisDuration=Date.now()-startTime;
       _global.headLoaderHistory=typeof (_global.headLoaderHistory)!=="undefined" ? _global.headLoaderHistory : [];//用于统计当前框架共加载文件的总时长
       if(typeof _global.showLogTimeout!=="undefined") clearTimeout(_global.showLogTimeout);
       _global.showLogTimeout=setTimeout(()=>{
@@ -726,7 +794,7 @@ const headLoaderSource=function(){
   let lifeCycle=24;//缓存失效时间周期
   let cycleDelay=0;//缓存失效时间延迟
   let mediaLength=1;//文件个数，用于统计页面加载多少个文件
-  let startTime=new Date().getTime();//开始时间，用于统计页面加载时长
+  let startTime=Date.now();//开始时间，用于统计页面加载时长
   thisScript=document.currentScript;
   let reLog=console.log && min!==".min";
   let showLog=false;
@@ -777,7 +845,35 @@ const headLoaderSource=function(){
     showLog=["true",""].includes(thisScript.getAttribute("data-showlog"));
   }
   if(min!=="") thisScript.remove(); //线上环境隐藏headLoader.js
-  (async _=>{
+  const checkVersion=async function(){
+    let srcSearch=thisScript.src.replace(/.+\.js\?v=(.*)/,"$1");
+    if(srcSearch && min===".min"){
+      let searchLoader=new headLoader();
+      searchLoader.lifeCycle=24*36500;
+      await searchLoader.run();
+      try{
+        let srcSearchCache=await searchLoader.db.getValue("srcSearch");
+        if(srcSearchCache!==srcSearch){
+          console.log('检测到新版本，准备清除旧缓存...');
+          // 尝试优雅地删除数据库
+          try{
+            await searchLoader.db.delete();
+            console.log('成功删除旧数据库');
+            await searchLoader.db.setValue("srcSearch",srcSearch);
+            localStorage.clear();
+          }
+          catch(e){
+            console.warn('删除数据库时出错:',e.message);
+          }
+        }
+      }
+      catch(error){
+        console.error('版本检查出错:',error);
+        // 即使出错也继续执行，不影响主要功能
+      }
+    }
+  };
+  const initPage=async function(){
     if(document.getElementsByTagName('HEAD').length===0) return false;
     let initLoader=new headLoader();
     initLoader.lifeCycle=lifeCycle;
@@ -788,20 +884,9 @@ const headLoaderSource=function(){
     if(dataFont.length>0) initLoader.dataFont=dataFont;
     if(dataFile.length>0) initLoader.dataFile=dataFile;
     initLoader.showLog=showLog;//是否显示统计
-    let srcSearch=thisScript.src.replace(/.+\.js\?v=(.*)/,"$1");//取URL的search值,用来判断是否需要强制清除数据库
-    if(srcSearch&&min===".min"){//强制清除缓存机制，在本地开发环境不需要
-      let searchLoader=new headLoader();
-      searchLoader.lifeCycle=24*36500;
-      await searchLoader.run();
-      let srcSearchCache=await searchLoader.db.getValue("srcSearch");
-      if((!srcSearchCache) || (srcSearchCache && srcSearchCache!==srcSearch)){
-        await searchLoader.db.delete();
-        await searchLoader.db.setValue("srcSearch",srcSearch);
-        localStorage.clear();
-      }
-    }
     await initLoader.run();
-  })();
+  };
+  checkVersion().then(initPage);
 };
 headLoaderSource();
 getHeaderLoader=_=>`function _asyncToGenerator(e){return function(){var t=e.apply(this,arguments);return new Promise(function(e,n){return function a(r,o){try{var s=t[r](o),i=s.value}catch(e){return void n(e)}if(!s.done)return Promise.resolve(i).then(function(e){a("next",e)},function(e){a("throw",e)});e(i)}("next")})}} const headLoaderSource=${headLoaderSource};headLoaderSource()`;
