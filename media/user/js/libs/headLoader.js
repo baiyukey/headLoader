@@ -15,12 +15,13 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.5.6
+ * @version : 2.5.8
+ * @update ：2025-07-06 00:42:15
  * @copyright : http://www.uielf.cn
  */
 const headLoaderSource=function(){
   const _global=(window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window;
-  const head=document.getElementsByTagName('HEAD').item(0);
+  const head=document.head;
   const error=function(){
     document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
   };
@@ -153,7 +154,7 @@ const headLoaderSource=function(){
         };
       });
     };
-    const closeDB=function(_waitTime=300){
+    const closeDB=function(_waitTime=100){
       return new Promise((_resolve,_reject)=>{
         // 清除可能存在的旧定时器
         if(typeof _global.waitCloseLocalDB!=="undefined"){
@@ -161,75 +162,79 @@ const headLoaderSource=function(){
         }
         // 立即关闭逻辑
         const immediateClose=()=>{
-          if(_global.localDBResult && _global.localDBStatus===1){
-            try{
-              _global.localDBResult.close();
-              _global.localDBStatus=0;
-              _global.localDBResult=null;
-              //console.log(`${option.database} 已强制关闭`);
-              _resolve(true);
+          if(_global.localDBResult){
+            if(_global.localDBStatus===1){
+              try{
+                _global.localDBResult.close();
+                _global.localDBStatus=0;
+                if(_waitTime===0) _global.localDBResult=null;
+                //console.log(`${option.database} 已强制关闭`);
+                _resolve("已强制关闭");
+              }
+              catch(e){
+                console.error('强制关闭数据库失败:',e);
+                _reject(e);
+              }
             }
-            catch(e){
-              console.error('强制关闭数据库失败:',e);
-              _reject(e);
+            else if(_global.localDBStatus===0){
+              _resolve("数据库已经是关闭状态"); // 数据库已经是关闭状态
             }
           }
           else{
-            _resolve(false); // 数据库已经是关闭状态
+            _resolve("数据库不存在。");
           }
         };
         // 如果有等待时间，使用延迟关闭
-        if(_waitTime>0){
-          _global.waitCloseLocalDB=setTimeout(()=>{
-            immediateClose();
-          },_waitTime);
-        }
-        else{
-          // 无等待时间，立即关闭
+        _global.waitCloseLocalDB=setTimeout(()=>{
           immediateClose();
-        }
+        },_waitTime);
       });
     };
     const deleteDB=function(){
-      return new Promise(async(_resolve,_reject)=>{
+      return new Promise(function(_resolve,_reject){
         // 第一步：确保关闭所有连接
-        try{
-          // 强制立即关闭，不等待
-          await closeDB(0);
-          // 第二步：检查是否还有活跃连接
-          let retryCount=0;
-          const maxRetries=10;
-          const retryInterval=300; // 300ms
-          const tryDelete=async()=>{
+        if(typeof (_global.waitDeleteDB)!=="undefined") clearTimeout(_global.waitDeleteDB);
+        let retryCount=0;
+        const maxRetries=10;
+        const retryInterval=200; // 300ms
+        const deleteRun=function(){
+          console.log("正在关闭数据库...");
+          closeDB(retryCount===maxRetries ? 0 : retryInterval*retryCount).then(_=>{
+            console.log("关闭数据库成功！");
             const deleteRequest=indexedDB.deleteDatabase(option.database);
             deleteRequest.onsuccess=()=>{
-              console.log('数据库删除成功');
-              _resolve(true);
+              console.log("删除数据库成功！");
+              _resolve("删除数据库成功");
             };
             deleteRequest.onerror=(event)=>{
-              console.error('删除数据库出错:',event.target.error);
-              _reject(event.target.error);
+              console.error(`删除数据库出错:'${event.target.error}...`);
+              reTry();
             };
             deleteRequest.onblocked=()=>{
-              retryCount++;
-              if(retryCount>=maxRetries){
-                _reject(new Error(`删除被阻塞，已达到最大重试次数 ${maxRetries}`));
-                return;
-              }
-              console.log(`删除被阻塞，等待其他连接关闭... (重试 ${retryCount}/${maxRetries})`);
-              // 再次尝试关闭可能漏掉的连接
-              closeDB(0).then(()=>{
-                // 使用递增的延迟时间
-                setTimeout(tryDelete,retryInterval*retryCount);
-              });
+              console.error(`删除数据库被阻塞，等待其他连接关闭...`);
+              reTry();
             };
-          };
-          // 开始尝试删除
-          await tryDelete();
-        }
-        catch(e){
-          _reject(new Error(`关闭数据库连接失败: ${e.message}`));
-        }
+          }).catch(_=>{
+            console.error(`数据库关闭失败，等待其他连接完成...`);
+            // 再次尝试关闭可能漏掉的连接
+            reTry();
+          });
+        };
+        const reTry=function(){
+          retryCount++;
+          if(retryCount>maxRetries){
+            if(_global.localDBResult===null){
+              console.log("数据库不存在或已删除。");
+              return _resolve("数据库不存在或已删除。");
+            }
+            console.error(`删除数据库失败，已达到最大重试次数 ${maxRetries}`);
+            return _reject(`删除数据库失败，已达到最大重试次数 ${maxRetries}`);
+          }
+          // 再次尝试关闭可能漏掉的连接
+          if(retryCount>1) console.warn(`${retryCount*retryInterval/1000}秒后尝试第${retryCount}次删除操作（共${maxRetries}次）。`);
+          deleteRun();
+        };
+        _global.waitDeleteDB=setTimeout(reTry,100);
       });
     };
     /**
@@ -263,7 +268,6 @@ const headLoaderSource=function(){
         defaultArgument.tableName=arguments[2] || defaultArgument.tableName;
       }
       return new Promise(async(_resolve,_reject)=>{
-        await openDB();
         let thisData={
           key:(min===".min" ? thisHex.encode(defaultArgument.key) : defaultArgument.key),
           value:defaultArgument.value,
@@ -278,8 +282,9 @@ const headLoaderSource=function(){
         });
         if(!_global.localDBResult){
           _resolve(false);
-          return;
+          return false;
         }
+        await openDB();
         let thisTable=_global.localDBResult.transaction(defaultArgument.tableName,"readwrite").objectStore(defaultArgument.tableName);
         let setData=thisTable[method](thisData);
         setData.onsuccess=async function(){
@@ -310,12 +315,16 @@ const headLoaderSource=function(){
           let list=table.index("key");//获取索引集合
           //从索引中获取数据，索引值在数据库建立时可能是多个，所以这里要用到[]格式,以容纳多个值，但此数据仅一个索引值
           let request=list.get([keyName]);
-          request.onsuccess=_e=>{
+          request.onsuccess=async _e=>{
             result=_e.target.result;
             if(result) Object.assign(result,{"key":_key});
             _resolve(result);
+            await closeDB();
           };//[注意！！！]_e.target.result有可能会返回undefined
-          request.onerror=_e=>_reject(_e);
+          request.onerror=async _e=>{
+            _reject(_e);
+            await closeDB();
+          };
         };
         //先从内存中查找，因为indexDB存取会有延迟
         result=that.temp[_key];
@@ -387,7 +396,7 @@ const headLoaderSource=function(){
   };
   let headLoader=function(_val){
     let val=typeof (_val)!=="undefined" ? _val : {};
-    this.dataMin=min;
+    this.isLocal=(min==="");
     this.dataDir=val.dataDir || "";
     this.dataCss=val.dataCss || [];
     this.dataJs=val.dataJs || [];
@@ -592,7 +601,7 @@ const headLoaderSource=function(){
       });
     };
     let linkJs=function(_url){
-      if(document.getElementsByTagName('HEAD').length===0) return false;
+      if(!document.head) return false;
       let thisTag=document.createElement("script");
       //link.type="text/javascript";
       setAttribute(thisTag,_url.split("|").splice(1));
@@ -600,7 +609,7 @@ const headLoaderSource=function(){
       head.appendChild(thisTag);
     };//往页面引入js
     let linkCss=function(_url){
-      if(document.getElementsByTagName('HEAD').length===0) return false;
+      if(!document.head) return false;
       let thisTag=document.createElement("link");
       setAttribute(thisTag,_url.split("|").splice(1));
       thisTag.type="text/css";
@@ -722,7 +731,7 @@ const headLoaderSource=function(){
       that.dataFont=Array.from(new Set(that.dataFont));//去重
       that.dataFile=that.dataFile.map(_v=>standardized(_v,""));
       that.dataFile=Array.from(new Set(that.dataFile));//去重
-      await that.db.open();
+      //await that.db.open();
       //先加载dataCss，后加载dataJs
       await loadThese(that.dataCss,"css");
       await loadThese(that.dataFont,"font");
@@ -874,7 +883,7 @@ const headLoaderSource=function(){
     }
   };
   const initPage=async function(){
-    if(document.getElementsByTagName('HEAD').length===0) return false;
+    if(!document.head) return false;
     let initLoader=new headLoader();
     initLoader.lifeCycle=lifeCycle;
     initLoader.cycleDelay=cycleDelay;
