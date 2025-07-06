@@ -15,12 +15,19 @@
  * @param {Boolean} [this.showLog=false] -是否显示加载统计(仅命令行模式可用)
  * @param {Number} [this.preload=0] -预加载开关(仅命令行模式可用) 1:预加载打开(不应用于当前页面)，0:预加载关闭（加载后立即应用于当前页面）。 默认0 。
  * @link : https://github.com/baiyukey/headLoader
- * @version : 2.5.8
- * @update ：2025-07-06 00:42:15
+ * @version : 2.5.9
+ * @update ：2025-07-07 05:35:00
  * @copyright : http://www.uielf.cn
  */
 const headLoaderSource=function(){
   const _global=(window.location.origin==="null" || window.location.origin===window.top.location.origin) ? window.top : window;
+  const hostname=_global.location.hostname;
+  if(!_global[hostname]){
+    _global[hostname]={temp:{}};
+  }
+  else if(!_global[hostname].temp){
+    _global[hostname].temp={};
+  }
   const head=document.head;
   const error=function(){
     document.body.innerHTML='<div style="text-align:center"><ul style="display:inline-block;margin-top:20px;text-align:left;list-style:none;line-height:32px;"><li style="list-style:none;"><h3>抱歉，您的浏览器不支持运行当前页面！</h3>如下两种方法供您参考：</li><li>✱ 请将您的浏览器切换到 "极速内核" (如果有)。</li><li>✱ <a href="https://www.google.cn/chrome/">或者下载安装 "chrome" 浏览器后重试。</a></li></ul></div>';
@@ -51,8 +58,8 @@ const headLoaderSource=function(){
     }
     bet=bet.replace(/[aeiouAEIOU01]/g,"");
     bet=bet.slice(0,18)+"$-_+!*"+bet.slice(18);
-    let betLength=bet.length;
-    let activeIndex=location.host.length;
+    const betLength=bet.length;
+    const activeIndex=location.host.length;
     let chatAt=-1;
     let url='';
     let returnUrl='';
@@ -66,6 +73,25 @@ const headLoaderSource=function(){
         returnUrl+=chatAt<0 ? url.charAt(i) : bet.charAt((chatAt+activeIndex)%betLength);
       }
       return returnUrl;
+    };
+    this.decode=function(encodedUrl){
+      let decodedUrl='';
+      let chatAt=-1;
+      for(let i=0; i<encodedUrl.length; i++){
+        chatAt=bet.indexOf(encodedUrl.charAt(i));
+        if(chatAt<0){
+          decodedUrl+=encodedUrl.charAt(i);
+        }
+        else{
+          // Reverse the encoding by subtracting activeIndex and handling wrap-around
+          let originalPos=(chatAt-activeIndex)%betLength;
+          if(originalPos<0) originalPos+=betLength;
+          decodedUrl+=bet.charAt(originalPos);
+        }
+      }
+      // Reverse the dot replacement
+      decodedUrl=decodedUrl.replace(/&dot/g,".");
+      return decodeURIComponent(decodedUrl);
     };
   };
   let thisHex=new hex();
@@ -87,7 +113,6 @@ const headLoaderSource=function(){
         //        video:["key","value","version"],
         data:["key","value","version"]
       },
-      version:0,
       lifeCycle:0,
       cycleDelay:0
     };
@@ -118,17 +143,12 @@ const headLoaderSource=function(){
       return false;
     };
     const openDB=function(_){
-      if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
       return new Promise((_resolve,_reject)=>{
         if(_global.localDBResult!==null && _global.localDBStatus===1){
           //if(reLog) console.log(`${option.database}不必重复打开`);
-          _resolve("success");
-          return;
+          return _resolve("success");
         }
         let request=_global.indexedDB.open(option.database); //建立打开 indexedDB
-        request.onerror=function(_e){
-          _reject(_e);
-        };
         request.onsuccess=function(_e){
           _global.localDBResult=request.result;
           _global.localDBStatus=1;
@@ -150,16 +170,22 @@ const headLoaderSource=function(){
               option.tables[_tableName].forEach(_c=>objectStore.createIndex(_c,["key"],{unique:true}));
             }
           }
-          _e.target.transaction.oncomplete=()=>_resolve(_global.localDBResult);
+          _e.target.transaction.oncomplete=function(){
+            _resolve(_global.localDBResult);
+          };
+          _e.target.transaction.onerror=function(_){
+            _reject(_);
+          };
+        };
+        request.onerror=function(_){
+          _reject(_);
         };
       });
     };
-    const closeDB=function(_waitTime=100){
+    const closeDB=function(_delay=100){
       return new Promise((_resolve,_reject)=>{
         // 清除可能存在的旧定时器
-        if(typeof _global.waitCloseLocalDB!=="undefined"){
-          clearTimeout(_global.waitCloseLocalDB);
-        }
+        if(typeof (_global.waitCloseLocalDB)!=="undefined") clearTimeout(_global.waitCloseLocalDB);
         // 立即关闭逻辑
         const immediateClose=()=>{
           if(_global.localDBResult){
@@ -167,27 +193,23 @@ const headLoaderSource=function(){
               try{
                 _global.localDBResult.close();
                 _global.localDBStatus=0;
-                if(_waitTime===0) _global.localDBResult=null;
-                //console.log(`${option.database} 已强制关闭`);
-                _resolve("已强制关闭");
+                _resolve(_delay===0 ? "已立即关闭数据库！" : "关闭数据库成功！");
               }
               catch(e){
-                console.error('强制关闭数据库失败:',e);
-                _reject(e);
+                _reject('关闭数据库失败:',e);
               }
             }
             else if(_global.localDBStatus===0){
-              _resolve("数据库已经是关闭状态"); // 数据库已经是关闭状态
+              _resolve("数据库已经是关闭状态。"); // 数据库已经是关闭状态
             }
           }
           else{
             _resolve("数据库不存在。");
           }
         };
-        // 如果有等待时间，使用延迟关闭
         _global.waitCloseLocalDB=setTimeout(()=>{
           immediateClose();
-        },_waitTime);
+        },_delay);
       });
     };
     const deleteDB=function(){
@@ -200,9 +222,11 @@ const headLoaderSource=function(){
         const deleteRun=function(){
           console.log("正在关闭数据库...");
           closeDB(retryCount===maxRetries ? 0 : retryInterval*retryCount).then(_=>{
-            console.log("关闭数据库成功！");
+            console.log(_);
             const deleteRequest=indexedDB.deleteDatabase(option.database);
+            console.log("正在执行删除数据库,请稍候...");
             deleteRequest.onsuccess=()=>{
+              that.temp={};
               console.log("删除数据库成功！");
               _resolve("删除数据库成功");
             };
@@ -243,12 +267,14 @@ const headLoaderSource=function(){
      */
     const setItem=function(){
       //如果数据key已存在，覆盖原有数据，否则写入
-      let defaultArgument={
-        tableName:'data',
+      let defaultData={
         key:'',//主键
         value:null,//读取文件获取的内容
-        etag:''//读取文件后从服务器返回的etag，用于后续判断文件是否更改
+        etag:'',//读取文件后从服务器返回的etag，用于后续判断文件是否更改
+        exception:false,
+        version:option.version
       };
+      let tableName="data";
       if(typeof (arguments[0])==="object"){
         /*例如：
          setItem({
@@ -258,37 +284,39 @@ const headLoaderSource=function(){
          etag:""
          })
          */
-        Object.assign(defaultArgument,arguments[0]);
+        Object.assign(defaultData,arguments[0]);
       }
       else{
-        //简写时只有两个参数，_key,_value
+        //简写时只有两个参数，_key,_value，_key参数不管开发环境还是线上环境均未编码
         //例如：setItem("/a/color.css",'a{color:red}')
-        defaultArgument.key=arguments[0] || defaultArgument.key;
-        defaultArgument.value=arguments[1] || defaultArgument.value;
-        defaultArgument.tableName=arguments[2] || defaultArgument.tableName;
+        defaultData.key=arguments[0] || defaultData.key;
+        defaultData.value=arguments[1] || defaultData.value;
+        tableName=arguments[2] || tableName;
       }
       return new Promise(async(_resolve,_reject)=>{
-        let thisData={
-          key:(min===".min" ? thisHex.encode(defaultArgument.key) : defaultArgument.key),
-          value:defaultArgument.value,
-          etag:defaultArgument.etag,
-          version:option.version
-        };
+        let thisData={};
+        Object.keys(defaultData).forEach(_=>{
+          if(_==="key"){
+            thisData[_]=min==="" ? defaultData[_] : thisHex.encode(defaultData[_]);
+            return;
+          }
+          thisData[_]=defaultData[_];
+        });
         let method="add";
-        await getItem(defaultArgument.key).then(_v=>{
+        await getItem(defaultData.key).then(_v=>{
           method=(_v ? "put" : "add");
         }).catch(_v=>{
           method="add";
         });
         if(!_global.localDBResult){
-          _resolve(false);
-          return false;
+          return _reject("数据库不存在或已删除");
         }
         await openDB();
-        let thisTable=_global.localDBResult.transaction(defaultArgument.tableName,"readwrite").objectStore(defaultArgument.tableName);
+        let thisTable=_global.localDBResult.transaction(tableName,"readwrite").objectStore(tableName);
         let setData=thisTable[method](thisData);
         setData.onsuccess=async function(){
           //console.log(`${thisData.key}数据(${method})${method==="add" ? "写入" : "更新"}成功`);
+          that.temp[thisData.key]=thisData;
           _resolve(thisData);
           await closeDB();
         };
@@ -304,20 +332,23 @@ const headLoaderSource=function(){
      * @param {String} [_tableName] -表名 可选，默认“data”
      * @return new Promise()
      */
-    const getItem=function(_key,_tableName){
+    const getItem=function(_key,_tableName){//_key参数不管开发环境还是线上环境均未编码
       return new Promise(async(_resolve,_reject)=>{
         let result={};
+        let keyName=(min==="" ? _key : thisHex.encode(_key));
+        const tableName=_tableName || "data";
         let searchIndexDB=async function(){
           await openDB();
-          let tableName=_tableName || "data";
           let table=_global.localDBResult.transaction(tableName,'readonly').objectStore(tableName);
-          let keyName=(min===".min" ? thisHex.encode(_key) : _key);
           let list=table.index("key");//获取索引集合
           //从索引中获取数据，索引值在数据库建立时可能是多个，所以这里要用到[]格式,以容纳多个值，但此数据仅一个索引值
           let request=list.get([keyName]);
           request.onsuccess=async _e=>{
             result=_e.target.result;
-            if(result) Object.assign(result,{"key":_key});
+            if(result){
+              Object.assign(result,{"key":keyName});
+              that.temp[keyName]=result;
+            }
             _resolve(result);
             await closeDB();
           };//[注意！！！]_e.target.result有可能会返回undefined
@@ -327,9 +358,10 @@ const headLoaderSource=function(){
           };
         };
         //先从内存中查找，因为indexDB存取会有延迟
-        result=that.temp[_key];
+        result=that.temp[keyName];
         if(result){
-          _resolve(result);
+          //console.log(`已从temp中获取"${min==="" ? _key : thisHex.decode(keyName)}":`,keyName);
+          _resolve(Object.assign(result,{"key":keyName}));
           return true;
         }
         //再从indexDB中查找
@@ -378,7 +410,7 @@ const headLoaderSource=function(){
       this.getHtml=getItemHtml;
       this.getJs=getItemJs;
       this.getBase64=getItemBase64;
-      this.temp={};
+      this.temp=_global[hostname].temp;
     }
     let that=this;
   };
@@ -425,9 +457,8 @@ const headLoaderSource=function(){
       if(that.dataActive && ["js","css"].includes(_type)) return (`${that.dataDir}${_type}${min}/${_module.split("|")[0]}`.replace("."+(_ext || _type),"")+min)+"."+(_ext || _type);//.js不一定是最后的字符
       return _module;
     };
-    let getCacheKey=function(_module,_type){
-      if(["js","css"].includes(_type)) return ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min)+"."+_type;
-      return _module;
+    let getModuleKey=function(_module,_type){
+      return (["js","css"].includes(_type)) ? ((that.dataDir+_type+min+'/'+_module.split("|")[0]).replace("."+_type,"")+min)+"."+_type : _module;
     };
     //获取文件头信息
     let getEtag=function(url){
@@ -474,23 +505,20 @@ const headLoaderSource=function(){
           return _r("success");
         }
         let url=getUrl(_module,_fileType)+(_module.indexOf("?")>=0 ? "&v=" : "?v=")+that.requestVersion;//扩展名不一定是最后的字符
-        let cacheKey=getCacheKey(_module,_fileType);
+        let moduleKey=getModuleKey(_module,_fileType);
         let getMod=async function(_io,_data){
           let data={};
           Object.assign(data,{
-            "key":cacheKey,
+            "key":moduleKey,
             "value":_data ? _data.value : "",
             "etag":_data ? _data.etag : "",
             "version":_data ? _data.version : that.requestVersion,
             "exception":_data ? _data.exception : false
           });
           if(_io===0){//0：缓存未到期
-            that.db.temp[cacheKey]=data;
             _r("success");
           }
           else if(_io===1){//1：缓存已到期，但服务器文件未变化，更新缓存版本继续使用
-            //setCache(cacheKey,data);
-            that.db.temp[cacheKey]=data;
             _r("success");
             data.version=that.requestVersion;
             await that.db.setItem(data);
@@ -498,18 +526,18 @@ const headLoaderSource=function(){
           else if(_io===2){//2：缓存已到期或已更新，需要从服务器获取
             let fileType=getType(data.key);
             let responseType=["js","ts","css","svg","text","xml","json","html","htm"].includes(fileType) ? "text" : "arraybuffer"; //获取的数据是否是二进制编码条件,例如jpeg类型
-            let hasError=function(_status){
+            let fetchError=async function(_status){
               data.version=0;
               data.value="";
               data.exception={
                 code:_status,
                 detail:`Error-${_status} ! ${errors[_status] || ""}`
               };
-              that.db.temp[cacheKey]=data;
+              await that.db.setItem(data);
               _r(`${data.key} 返回 ${data.exception.detail}`);
             };
             if(window.fetch){
-              let response=await fetch(url).catch(_=>hasError(_.name==="TypeError" ? 0 : _.name));
+              let response=await fetch(url).catch(_=>fetchError(_.name==="TypeError" ? 0 : _.name));
               if(response.ok){
                 let content=responseType==="arraybuffer" ? await response.arrayBuffer() : await response.text();
                 Object.assign(data,{
@@ -518,12 +546,11 @@ const headLoaderSource=function(){
                   "version":that.requestVersion,
                   "exception":false
                 });
-                that.db.temp[cacheKey]=data;
-                _r("success");
                 await that.db.setItem(data);
+                _r("success");
               }
               else{
-                hasError(response.status);
+                await fetchError(response.status);
               }
             }
             else{
@@ -543,13 +570,12 @@ const headLoaderSource=function(){
                     "version":that.requestVersion,
                     "exception":false
                   });
-                  that.db.temp[cacheKey]=data;
-                  _r("success");
                   await that.db.setItem(data);
+                  _r("success");
                 }
                 else{
-                  hasError(xhr.status);
                   xhr.abort();
+                  await fetchError(xhr.status);
                 }
               };
               xhr.onerror=_e=>{
@@ -559,7 +585,7 @@ const headLoaderSource=function(){
             }
           }
         };
-        that.db.getItem(cacheKey).then((_data)=>{
+        that.db.getItem(moduleKey).then((_data)=>{
           getStatus(_data,url).then(_status=>getMod(_status,_data)).catch(_err=>console.error(_err));
         });
       });
@@ -620,7 +646,6 @@ const headLoaderSource=function(){
     };//往页面引入css
     let writeThese=async function(_modules,_fileType){//_fileType为小写
       return new Promise((_resolve,_reject)=>{
-        let cacheKey;
         let writeCode={
           "JS":writeJs,
           "CSS":writeCss,
@@ -631,8 +656,9 @@ const headLoaderSource=function(){
         _modules.forEach((_k)=>{
           codes[_k]='';
           let runThis=function(_resolve,_reject){
-            cacheKey=getCacheKey(_k,_fileType);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
-            let thisData=that.db.temp[cacheKey] ? that.db.temp[cacheKey] : "";
+            const modelKey=getModuleKey(_k,_fileType);
+            const dbKey=min==="" ? modelKey : thisHex.encode(modelKey);//(that.dataDir+_fileType+min+'/'+_k.replace(/(\.js)|(\.css)/g,"")+min);
+            let thisData=that.db.temp[dbKey] ? that.db.temp[dbKey] : "";
             codes[_k]=thisData.value;
             that.returnData.push({
               key:_k,
@@ -719,7 +745,7 @@ const headLoaderSource=function(){
         lifeCycle:that.lifeCycle,
         cycleDelay:that.cycleDelay
       });
-      this.db.temp={};//页内缓存数据
+      //this.db.temp={};//页内缓存数据
       this.db.getUrl=getUrl;
       this.returnData={};//用于run返回的数据
       that.returnData=[];
@@ -867,9 +893,7 @@ const headLoaderSource=function(){
           // 尝试优雅地删除数据库
           try{
             await searchLoader.db.delete();
-            console.log('成功删除旧数据库');
             await searchLoader.db.setValue("srcSearch",srcSearch);
-            localStorage.clear();
           }
           catch(e){
             console.warn('删除数据库时出错:',e.message);
